@@ -1,220 +1,108 @@
-extends Node2D
+extends Node
 class_name PatternController
 
-@onready var rng: RNGService = get_node("/root/RNG") as RNGService
-@onready var gs: GameStateData = get_node("/root/GameState") as GameStateData
-
+@export var spawn_enabled: bool = true
 @export var bullet_pool_path: NodePath
-var pool: BulletPool
-var active_types: Array[String] = []
-var elite_pending := false
+@export var origin_path: NodePath
+@export var min_interval: float = 1.2
+@export var max_interval: float = 2.0
+
+@onready var pool: BulletPool = get_node_or_null(bullet_pool_path) as BulletPool
+@onready var origin: Node2D = get_node_or_null(origin_path) as Node2D
+@onready var gs: Node = get_node_or_null("/root/GameState")
+
+var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+var timer: Timer
 
 func _ready() -> void:
-	add_to_group("pattern_controller")
-	pool = get_node(bullet_pool_path) as BulletPool
-	gs.connect("risk_tier_changed", _on_heat)
-	gs.connect("pulse_started", _on_pulse_started)
-
-func trigger_elite_burst() -> void:
-	elite_pending = true
+	rng.randomize()
+	timer = Timer.new()
+	timer.one_shot = true
+	add_child(timer)
+	timer.timeout.connect(_on_timer_timeout)
+	_schedule_next()
 
 func _process(_delta: float) -> void:
-	# Simple scheduler: decide patterns based on heat and time
-	if active_types.size() < 1:
-		_start_pattern(_pick_pattern())
-	if gs.heat >= 1 and active_types.size() < 2 and rng.randf() < 0.005:
-		_start_pattern(_pick_pattern())
-
-func _start_pattern(kind: String) -> void:
-	if active_types.has(kind):
+	# Guard everything behind this flag; Furnace is your main spawner now.
+	if not spawn_enabled:
 		return
-	if active_types.size() >= 2:
+
+func _on_timer_timeout() -> void:
+	# Always reschedule so the timer stays alive even when disabled.
+	_schedule_next()
+	if not spawn_enabled or pool == null:
 		return
-	active_types.append(kind)
-	match kind:
-		"radial": await _radial_burst()
-		"spiral": await _spiral_stream()
-		"aimed": await _aimed_volley()
-		"wall": await _wall_sweep()
-		"orbit": await _orbit_mines()
-		"flower": await _flower_pulse()
-	active_types.erase(kind)
 
-func _pick_pattern() -> String:
-	var all := ["radial","spiral","aimed","wall","orbit","flower"]
-	return all[rng.randi_range(0, all.size()-2 + int(gs.heat>1))]
+	var pat: int = rng.randi_range(0, 2)
+	if pat == 0:
+		_radial_burst(12)
+	elif pat == 1:
+		_aimed_cone(5, deg_to_rad(20.0))
+	else:
+		_wall_sweep(18)
 
-func _on_heat(_tier: int) -> void:
-	pass
+func _schedule_next() -> void:
+	var iv: float = lerp(min_interval, max_interval, rng.randf())
+	timer.start(iv)
+
+# ---------------- helpers ----------------
+
+func _heat() -> int:
+	if gs and "heat" in gs:
+		return int(gs.heat)
+	return 0
+
+func _origin_pos() -> Vector2:
+	if origin:
+		return origin.global_position
+	var p: Node = get_parent()
+	if p is Node2D:
+		return (p as Node2D).global_position
+	return Vector2.ZERO
+
+func _speed() -> float:
+	return 160.0 + 40.0 * float(_heat())
+
+# ---------------- patterns (simple, compile-safe) ----------------
+
+func _radial_burst(count: int) -> void:
+	var speed: float = _speed()
+	var base: float = rng.randf() * TAU
+	var pos: Vector2 = _origin_pos()
+	for i in range(count):
+		var a: float = base + TAU * float(i) / float(count)
+		pool.fire(pos, Vector2.RIGHT.rotated(a) * speed, 6.0)
+
+func _aimed_cone(count: int, spread: float) -> void:
+	var pos: Vector2 = _origin_pos()
+	var player: Node2D = get_tree().get_root().find_child("Player", true, false) as Node2D
+	var target: Vector2 = pos + Vector2.RIGHT
+	if player:
+		target = player.global_position
+	var dir_angle: float = pos.direction_to(target).angle()
+	var start: float = dir_angle - spread * 0.5
+	var speed: float = _speed() * 1.1
+	for i in range(count):
+		var t: float = 0.0
+		if count > 1:
+			t = float(i) / float(count - 1)
+		var a: float = start + spread * t
+		pool.fire(pos, Vector2.RIGHT.rotated(a) * speed, 6.0)
+
+func _wall_sweep(count: int) -> void:
+	var pos: Vector2 = _origin_pos()
+	var a: float = 0.0
+	if (rng.randi() % 2) == 0:
+		a = 0.0           # left→right
+	else:
+		a = PI            # right→left
+	var speed: float = _speed() * 0.9
+	for _i in range(count):
+		pool.fire(pos, Vector2.RIGHT.rotated(a) * speed, 6.0)
+
+# ---------------- optional pulse hooks (guarded) ----------------
 
 func _on_pulse_started() -> void:
-	await _flower_pulse(true)
-	gs.pulse_end(true)
-
-# --- Pattern Implementations ---
-func _radial_burst() -> void:
-	var n := 12 + gs.heat * 6
-	var speed := 120.0 + gs.heat * 30.0
-	var pos := global_position
-	for i in range(n):
-		var ang := TAU * (float(i)/n)
-		pool.fire(pos, Vector2.RIGHT.rotated(ang) * speed, 4.0)
-	await get_tree().create_timer(1.0).timeout
-
-func _spiral_stream() -> void:
-	var pos := global_position
-	var rpm := 60.0 + gs.heat * 20.0
-	var speed := 100.0 + gs.heat * 25.0
-	var t := 0.0
-	var dur := 2.0
-	while t < dur:
-		var ang := deg_to_rad((t * rpm) * 6.0)
-		pool.fire(pos, Vector2.RIGHT.rotated(ang) * speed, 4.0)
-		t += 0.08
-		await get_tree().create_timer(0.08).timeout
-
-func _aimed_volley() -> void:
-	var player := get_tree().get_first_node_in_group("player") as Node2D
-	if not player: return
-	var pos := global_position
-	var spread := deg_to_rad(10.0 + gs.heat * 5.0)
-	var dir := (player.global_position - pos).angle()
-	for angle in [dir-spread, dir, dir+spread]:
-		pool.fire(pos, Vector2.RIGHT.rotated(angle) * 180.0, 4.0)
-	await get_tree().create_timer(0.6).timeout
-
-func _wall_sweep() -> void:
-	# Versatile wall pattern: random orientation & origin with moving gaps
-	# Modes: 0=top→down, 1=bottom→up, 2=left→right, 3=right→left,
-	#        4=center→sides (horizontal), 5=center→up&down (vertical)
-	var rect := get_viewport_rect()
-	var size := rect.size
-	var top := rect.position.y
-	var left := rect.position.x
-	var right := left + size.x
-	var bottom := top + size.y
-	var center := rect.position + size * 0.5
-
-	var heat := gs.heat
-	var cols := 10 + heat * 2       # grid density
-	var rows := 6 + heat            # pulses
-	var speed := 140.0 + heat * 30.0
-	var row_interval := 0.16        # time between pulses
-
-	var col_spacing := size.x / float(cols + 1)
-	var row_spacing := size.y / float(rows + 1)
-
-	var mode := rng.randi_range(0, 5)
-
-	if mode == 0:
-		# Top → Down
-		var life := (size.y + 120.0) / speed
-		var gap := rng.randi_range(0, cols - 1)
-		var gap2 := gap if heat < 2 else (gap + rng.randi_range(1, max(1, cols - 1))) % cols
-		for step in range(rows):
-			if heat >= 1: gap = clamp(gap + rng.randi_range(-1, 1), 0, cols - 1)
-			if heat >= 2: gap2 = clamp(gap2 + rng.randi_range(-1, 1), 0, cols - 1)
-			for c in range(cols):
-				if c == gap or c == gap2: continue
-				var x_pos := left + (c + 1) * col_spacing
-				var pos := Vector2(x_pos, top - 40.0)
-				pool.fire(pos, Vector2(0, speed), life)
-			await get_tree().create_timer(row_interval).timeout
-	elif mode == 1:
-		# Bottom → Up
-		var life := (size.y + 120.0) / speed
-		var gap := rng.randi_range(0, cols - 1)
-		var gap2 := gap if heat < 2 else (gap + rng.randi_range(1, max(1, cols - 1))) % cols
-		for step in range(rows):
-			if heat >= 1: gap = clamp(gap + rng.randi_range(-1, 1), 0, cols - 1)
-			if heat >= 2: gap2 = clamp(gap2 + rng.randi_range(-1, 1), 0, cols - 1)
-			for c in range(cols):
-				if c == gap or c == gap2: continue
-				var x_pos := left + (c + 1) * col_spacing
-				var pos := Vector2(x_pos, bottom + 40.0)
-				pool.fire(pos, Vector2(0, -speed), life)
-			await get_tree().create_timer(row_interval).timeout
-	elif mode == 2:
-		# Left → Right
-		var life := (size.x + 120.0) / speed
-		var gap := rng.randi_range(0, rows - 1)
-		var gap2 := gap if heat < 2 else (gap + rng.randi_range(1, max(1, rows - 1))) % rows
-		for step in range(cols):
-			if heat >= 1: gap = clamp(gap + rng.randi_range(-1, 1), 0, rows - 1)
-			if heat >= 2: gap2 = clamp(gap2 + rng.randi_range(-1, 1), 0, rows - 1)
-			for r in range(rows):
-				if r == gap or r == gap2: continue
-				var y_pos := top + (r + 1) * row_spacing
-				var pos := Vector2(left - 40.0, y_pos)
-				pool.fire(pos, Vector2(speed, 0), life)
-			await get_tree().create_timer(row_interval).timeout
-	elif mode == 3:
-		# Right → Left
-		var life := (size.x + 120.0) / speed
-		var gap := rng.randi_range(0, rows - 1)
-		var gap2 := gap if heat < 2 else (gap + rng.randi_range(1, max(1, rows - 1))) % rows
-		for step in range(cols):
-			if heat >= 1: gap = clamp(gap + rng.randi_range(-1, 1), 0, rows - 1)
-			if heat >= 2: gap2 = clamp(gap2 + rng.randi_range(-1, 1), 0, rows - 1)
-			for r in range(rows):
-				if r == gap or r == gap2: continue
-				var y_pos := top + (r + 1) * row_spacing
-				var pos := Vector2(right + 40.0, y_pos)
-				pool.fire(pos, Vector2(-speed, 0), life)
-			await get_tree().create_timer(row_interval).timeout
-	elif mode == 4:
-		# Center → Sides (Horizontal explosion)
-		var life := (size.x * 0.5 + 120.0) / speed
-		var gap := rng.randi_range(0, rows - 1)
-		var gap2 := gap if heat < 2 else (gap + rng.randi_range(1, max(1, rows - 1))) % rows
-		for step in range(cols):
-			if heat >= 1: gap = clamp(gap + rng.randi_range(-1, 1), 0, rows - 1)
-			if heat >= 2: gap2 = clamp(gap2 + rng.randi_range(-1, 1), 0, rows - 1)
-			for r in range(rows):
-				if r == gap or r == gap2: continue
-				var y_pos := top + (r + 1) * row_spacing
-				var p := Vector2(center.x, y_pos)
-				pool.fire(p, Vector2(speed, 0), life)
-				pool.fire(p, Vector2(-speed, 0), life)
-			await get_tree().create_timer(row_interval).timeout
-	else:
-		# Center → Up & Down (Vertical explosion)
-		var life := (size.y * 0.5 + 120.0) / speed
-		var gap := rng.randi_range(0, cols - 1)
-		var gap2 := gap if heat < 2 else (gap + rng.randi_range(1, max(1, cols - 1))) % cols
-		for step in range(rows):
-			if heat >= 1: gap = clamp(gap + rng.randi_range(-1, 1), 0, cols - 1)
-			if heat >= 2: gap2 = clamp(gap2 + rng.randi_range(-1, 1), 0, cols - 1)
-			for c in range(cols):
-				if c == gap or c == gap2: continue
-				var x_pos := left + (c + 1) * col_spacing
-				var p := Vector2(x_pos, center.y)
-				pool.fire(p, Vector2(0, speed), life)
-				pool.fire(p, Vector2(0, -speed), life)
-			await get_tree().create_timer(row_interval).timeout
-
-func _orbit_mines() -> void:
-	# spawn mines that detach
-	var center := global_position
-	var count := 2 + gs.heat
-	for i in range(count):
-		var ang := TAU * (float(i)/count)
-		var pos := center + Vector2.RIGHT.rotated(ang) * 60.0
-		pool.fire(pos, Vector2.ZERO, 2.0)
-		await get_tree().create_timer(0.5).timeout
-	# detach phase
-	for i in range(count):
-		var ang := TAU * (float(i)/count)
-		pool.fire(center, Vector2.RIGHT.rotated(ang) * 140.0, 3.0)
-	await get_tree().create_timer(0.8).timeout
-
-func _flower_pulse(boss := false) -> void:
-	var petals := 16 if boss else 10
-	var speed := 160.0 if boss else 120.0
-	var waves := 12 if boss else 6
-	for w in range(waves):
-		var phase := w * 0.35
-		for i in range(petals):
-			var ang := TAU * i/float(petals) + phase
-			pool.fire(global_position, Vector2.RIGHT.rotated(ang) * speed, 5.0)
-		await get_tree().create_timer(0.25).timeout
+	if not spawn_enabled:
+		return
+	# (kept for future boss/pulse events)

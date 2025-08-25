@@ -1,0 +1,12 @@
+[gd_scene load_steps=2 format=3 uid="uid://3t3juw4h5c8u"]
+
+[ext_resource type="Script" uid="uid://kwnsaaelkfhe" path="res://scripts/gameplay/Furnace.gd" id="1_rld0g"]
+
+[node name="Furnace" type="Node2D"]
+script = ExtResource("1_rld0g")
+
+[node name="Mouth" type="Sprite2D" parent="."]
+
+[node name="Telegraph" type="Line2D" parent="."]
+
+[node name="Sfx" type="AudioStreamPlayer2D" parent="."]
