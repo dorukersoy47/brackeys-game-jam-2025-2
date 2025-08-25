@@ -9,8 +9,8 @@ class_name Player
 @export var max_hp: int = 3
 
 # Scene wiring
-@export var sprite_path: NodePath       # set to your Sprite2D (optional)
-@export var hitbox_path: NodePath       # set to your CollisionShape2D (your node is named "Hitbox")
+@export var sprite_path: NodePath       # optional Sprite2D
+@export var hitbox_path: NodePath       # set this to your "Hitbox" CollisionShape2D
 
 # Debug HUD
 @export var show_input_debug: bool = true
@@ -20,22 +20,24 @@ var hp: int = 3
 var is_dashing: bool = false
 var dash_cd: float = 0.0
 
-var _sprite: Sprite2D
-var _hitbox: CollisionShape2D
-var _dbg: Label
+var _sprite: Sprite2D = null
+var _hitbox: CollisionShape2D = null
+var _dbg: Label = null
+var _last_key_event: String = ""   # last key seen via _unhandled_input
 
 func _ready() -> void:
-	# Run even if something else pauses the tree
-	get_tree().paused = false
+	# Make sure we still run if the tree is paused
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	set_process(true)            # <— we will move in _process, not physics
-	set_physics_process(false)   # (disable to avoid confusion)
+	get_tree().paused = false
+	set_process(true)
+	set_physics_process(false)           # we’ll move in _process to remove physics dependency
+	set_process_input(true)
+	set_process_unhandled_input(true)
 
 	add_to_group("player")
 	hp = max_hp
 
 	# Sprite hookup (robust)
-	_sprite = null
 	if sprite_path != NodePath(""):
 		_sprite = get_node_or_null(sprite_path) as Sprite2D
 	if _sprite == null:
@@ -43,8 +45,7 @@ func _ready() -> void:
 	if _sprite == null:
 		_sprite = get_node_or_null("Sprite2D") as Sprite2D
 
-	# Hitbox hookup (fixes CollisionShape2D vs Hitbox)
-	_hitbox = null
+	# Hitbox hookup (your node is named "Hitbox")
 	if hitbox_path != NodePath(""):
 		_hitbox = get_node_or_null(hitbox_path) as CollisionShape2D
 	if _hitbox == null:
@@ -64,43 +65,46 @@ func _process(delta: float) -> void:
 	if dash_cd > 0.0:
 		dash_cd -= delta
 
-	# read input every frame (actions → defaults → raw keys)
-	var dir: Vector2 = _read_dir()
+	# ---- POLLED input (works even if events are swallowed elsewhere) ----
+	var dir: Vector2 = _read_dir_polled()
 
-	# move using plain transform (works even if physics is off)
+	# move by directly editing transform so physics can’t block us
 	var speed: float = move_speed * (dash_speed_mult if is_dashing else 1.0)
 	global_position += dir * speed * delta
 
-	# dash (edge-trigger)
+	# dash from action edge (use polled action)
 	if (not is_dashing) and dash_cd <= 0.0 and Input.is_action_just_pressed("Dash"):
 		_start_dash_iframes()
 
 	# visual while dashing
 	if _sprite:
-		_sprite.modulate = Color(1,1,1,0.75) if is_dashing else Color(1,1,1,1)
+		if is_dashing:
+			_sprite.modulate = Color(1,1,1,0.75)
+		else:
+			_sprite.modulate = Color(1,1,1,1)
 
 	# live debug HUD
 	if _dbg:
-		_dbg.text = "dir=%s  pos=%s  paused=%s  proc=ON" % [
-			str(dir), str(global_position), str(get_tree().paused)
-		]
+		var paused_str: String = str(get_tree().paused)
+		var pos_str: String = str(global_position)
+		var dir_str: String = str(dir)
+		var key_str: String = _last_key_event if _last_key_event != "" else "-"
+		_dbg.text = "dir=%s  pos=%s  paused=%s  evt=%s  proc=ON" % [dir_str, pos_str, paused_str, key_str]
 
-func _read_dir() -> Vector2:
-	# 1) your custom actions
-	var dx := int(Input.is_action_pressed("move_right")) - int(Input.is_action_pressed("move_left"))
-	var dy := int(Input.is_action_pressed("move_down"))  - int(Input.is_action_pressed("move_up"))
-	var dir := Vector2(dx, dy)
+# Read WASD/Arrows three ways: your actions → ui_* → raw keys
+func _read_dir_polled() -> Vector2:
+	var dx: int = int(Input.is_action_pressed("move_right")) - int(Input.is_action_pressed("move_left"))
+	var dy: int = int(Input.is_action_pressed("move_down"))  - int(Input.is_action_pressed("move_up"))
+	var dir: Vector2 = Vector2(dx, dy)
 
-	# 2) default ui_* fallback
 	if dir == Vector2.ZERO:
-		var ux := int(Input.is_action_pressed("ui_right")) - int(Input.is_action_pressed("ui_left"))
-		var uy := int(Input.is_action_pressed("ui_down"))  - int(Input.is_action_pressed("ui_up"))
+		var ux: int = int(Input.is_action_pressed("ui_right")) - int(Input.is_action_pressed("ui_left"))
+		var uy: int = int(Input.is_action_pressed("ui_down"))  - int(Input.is_action_pressed("ui_up"))
 		dir = Vector2(ux, uy)
 
-	# 3) raw keys fallback (works even if actions are misnamed/missing)
 	if dir == Vector2.ZERO:
-		var rx := 0
-		var ry := 0
+		var rx: int = 0
+		var ry: int = 0
 		if Input.is_key_pressed(KEY_RIGHT) or Input.is_key_pressed(KEY_D): rx = 1
 		if Input.is_key_pressed(KEY_LEFT)  or Input.is_key_pressed(KEY_A): rx = -1
 		if Input.is_key_pressed(KEY_DOWN)  or Input.is_key_pressed(KEY_S): ry = 1
@@ -108,6 +112,12 @@ func _read_dir() -> Vector2:
 		dir = Vector2(rx, ry)
 
 	return dir.normalized()
+
+# Event path: proves whether key events reach the scene
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed:
+		_last_key_event = "key=%s phys=%s" % [str((event as InputEventKey).keycode), str((event as InputEventKey).physical_keycode)]
+		# don’t accept the event; we want to see if anything else handles it too
 
 func _start_dash_iframes() -> void:
 	is_dashing = true

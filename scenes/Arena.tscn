@@ -1,7 +1,7 @@
 [gd_scene load_steps=4 format=3 uid="uid://bf4an5gor4ar2"]
 
 [ext_resource type="Script" uid="uid://cwjrivgkrlcm1" path="res://scripts/gameplay/Arena.gd" id="1_4mhah"]
-[ext_resource type="PackedScene" uid="uid://q72pnkga1qoq" path="res://scenes/Player.tscn" id="1_u3rsd"]
+[ext_resource type="PackedScene" uid="uid://dxd1e502yfpgw" path="res://scenes/Player.tscn" id="1_u3rsd"]
 [ext_resource type="PackedScene" uid="uid://3t3juw4h5c8u" path="res://scenes/Furnace.tscn" id="8_gcrh0"]
 
 [node name="Arena" type="Node2D"]
