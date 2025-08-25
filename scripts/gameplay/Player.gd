@@ -1,79 +1,128 @@
 extends CharacterBody2D
 class_name Player
 
-@onready var save: Node = get_node("/root/Save")
-@onready var gs: GameState = get_node("/root/GameState") as GameState
+# ---- Tunables ----
+@export var move_speed: float = 220.0
+@export var dash_speed_mult: float = 2.0
+@export var dash_cooldown: float = 0.35
+@export var dash_iframes: float = 0.12
+@export var max_hp: int = 3
 
-const BASE_SPEED := 220.0
-@export var max_hp := 3
-var hp := 3
+# Scene wiring
+@export var sprite_path: NodePath       # set to your Sprite2D (optional)
+@export var hitbox_path: NodePath       # set to your CollisionShape2D (your node is named "Hitbox")
 
-var focus := false
-var dash_cd := 0.0
-var dash_iframes := 0.2
-var dash_cooldown := 0.8
-var is_dashing := false
-var cashout_hold := 0.0
-var cashout_time := 2.0
+# Debug HUD
+@export var show_input_debug: bool = true
+
+# ---- State ----
+var hp: int = 3
+var is_dashing: bool = false
+var dash_cd: float = 0.0
+
+var _sprite: Sprite2D
+var _hitbox: CollisionShape2D
+var _dbg: Label
 
 func _ready() -> void:
+	# Run even if something else pauses the tree
+	get_tree().paused = false
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	set_process(true)            # <— we will move in _process, not physics
+	set_physics_process(false)   # (disable to avoid confusion)
+
 	add_to_group("player")
-	gs.connect("request_player_hp_delta", _on_hp_delta)
-	# upgrades
-	max_hp = 3 + save.get_upgrade("hp")
 	hp = max_hp
-	dash_iframes += save.get_upgrade("dash_iframes") * 0.05
-	cashout_time = max(0.6, cashout_time - save.get_upgrade("cashout") * 0.2)
 
-func _physics_process(_delta: float) -> void:
-	_update_movement()
-	_update_dash(_delta)
-	_update_cashout(_delta)
+	# Sprite hookup (robust)
+	_sprite = null
+	if sprite_path != NodePath(""):
+		_sprite = get_node_or_null(sprite_path) as Sprite2D
+	if _sprite == null:
+		_sprite = get_node_or_null("Sprite") as Sprite2D
+	if _sprite == null:
+		_sprite = get_node_or_null("Sprite2D") as Sprite2D
 
-func _update_movement() -> void:
-	var dir := Vector2.ZERO
-	dir.y = int(Input.is_action_pressed("move_down")) - int(Input.is_action_pressed("move_up"))
-	dir.x = int(Input.is_action_pressed("move_right")) - int(Input.is_action_pressed("move_left"))
-	dir = dir.normalized()
+	# Hitbox hookup (fixes CollisionShape2D vs Hitbox)
+	_hitbox = null
+	if hitbox_path != NodePath(""):
+		_hitbox = get_node_or_null(hitbox_path) as CollisionShape2D
+	if _hitbox == null:
+		_hitbox = get_node_or_null("Hitbox") as CollisionShape2D
+	if _hitbox == null:
+		_hitbox = get_node_or_null("CollisionShape2D") as CollisionShape2D
 
-	focus = Input.is_action_pressed("Focus")
-	var spd: float = BASE_SPEED * (1.0 + save.get_upgrade("move") * 0.10)
-	if focus:
-		spd *= 0.5
-	if is_dashing:
-		spd *= 2.0
-	velocity = dir * spd
-	move_and_slide()
+	# Debug label
+	if show_input_debug:
+		_dbg = Label.new()
+		_dbg.name = "InputDebug"
+		_dbg.position = Vector2(16, -24)
+		add_child(_dbg)
 
-func _update_dash(delta: float) -> void:
-	dash_cd -= delta
-	if Input.is_action_just_pressed("Dash") and dash_cd <= 0.0:
-		is_dashing = true
-		dash_cd = dash_cooldown
-		$CollisionShape2D.disabled = true
-		await get_tree().create_timer(dash_iframes).timeout
-		$CollisionShape2D.disabled = false
-		is_dashing = false
+func _process(delta: float) -> void:
+	# cooldown
+	if dash_cd > 0.0:
+		dash_cd -= delta
 
-func _update_cashout(delta: float) -> void:
-	if Input.is_action_pressed("CashOut"):
-		cashout_hold += delta
-		# Slow while channeling
-		velocity *= 0.7
-		if cashout_hold >= cashout_time:
-			gs.bank_unbanked_full_extract()
-			cashout_hold = 0.0
-	else:
-		cashout_hold = 0.0
+	# read input every frame (actions → defaults → raw keys)
+	var dir: Vector2 = _read_dir()
 
-func take_damage(dmg: int = 1) -> void:
+	# move using plain transform (works even if physics is off)
+	var speed: float = move_speed * (dash_speed_mult if is_dashing else 1.0)
+	global_position += dir * speed * delta
+
+	# dash (edge-trigger)
+	if (not is_dashing) and dash_cd <= 0.0 and Input.is_action_just_pressed("Dash"):
+		_start_dash_iframes()
+
+	# visual while dashing
+	if _sprite:
+		_sprite.modulate = Color(1,1,1,0.75) if is_dashing else Color(1,1,1,1)
+
+	# live debug HUD
+	if _dbg:
+		_dbg.text = "dir=%s  pos=%s  paused=%s  proc=ON" % [
+			str(dir), str(global_position), str(get_tree().paused)
+		]
+
+func _read_dir() -> Vector2:
+	# 1) your custom actions
+	var dx := int(Input.is_action_pressed("move_right")) - int(Input.is_action_pressed("move_left"))
+	var dy := int(Input.is_action_pressed("move_down"))  - int(Input.is_action_pressed("move_up"))
+	var dir := Vector2(dx, dy)
+
+	# 2) default ui_* fallback
+	if dir == Vector2.ZERO:
+		var ux := int(Input.is_action_pressed("ui_right")) - int(Input.is_action_pressed("ui_left"))
+		var uy := int(Input.is_action_pressed("ui_down"))  - int(Input.is_action_pressed("ui_up"))
+		dir = Vector2(ux, uy)
+
+	# 3) raw keys fallback (works even if actions are misnamed/missing)
+	if dir == Vector2.ZERO:
+		var rx := 0
+		var ry := 0
+		if Input.is_key_pressed(KEY_RIGHT) or Input.is_key_pressed(KEY_D): rx = 1
+		if Input.is_key_pressed(KEY_LEFT)  or Input.is_key_pressed(KEY_A): rx = -1
+		if Input.is_key_pressed(KEY_DOWN)  or Input.is_key_pressed(KEY_S): ry = 1
+		if Input.is_key_pressed(KEY_UP)    or Input.is_key_pressed(KEY_W): ry = -1
+		dir = Vector2(rx, ry)
+
+	return dir.normalized()
+
+func _start_dash_iframes() -> void:
+	is_dashing = true
+	dash_cd = dash_cooldown
+	if _hitbox:
+		_hitbox.disabled = true
+	await get_tree().create_timer(dash_iframes).timeout
+	if _hitbox:
+		_hitbox.disabled = false
+	is_dashing = false
+
+func take_hit(dmg: int = 1) -> void:
 	if is_dashing:
 		return
-	hp -= dmg
+	hp -= max(dmg, 1)
 	if hp <= 0:
-		gs.end_run(false)
-
-func _on_hp_delta(delta_frac: float) -> void:
-	# delta_frac is percent of current HP (e.g., -0.25)
-	var change := int(ceil(hp * -delta_frac))
-	hp = clamp(hp - change, 1, max_hp)
+		hp = max_hp
+		global_position = Vector2(320, 180)

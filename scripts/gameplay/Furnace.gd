@@ -1,168 +1,160 @@
 extends Node2D
 class_name Furnace
 
-@export var bullet_pool_path: NodePath
-@export var telegraph_duration: float = 0.45
-@export var base_speed: float = 170.0
+@export var bullet_scene: PackedScene = preload("res://scenes/Bullet.tscn")
+@export var base_speed: float = 180.0
 @export var heat_speed_bonus: float = 50.0
-@export var wave_period: float = 10.0
-@export var arc_bullet_spacing_deg: float = 6.0
-
-@onready var _pool: Node = get_node_or_null(bullet_pool_path)
-@onready var _telegraph: Line2D = $Telegraph
-var _sfx: AudioStreamPlayer = null
+@export var pattern_interval: float = 2.2   # seconds between patterns
+@export var telegraph_time: float = 0.35
 
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
-var _rot: float = 0.0
+var _elapsed: float = 0.0
+var _pattern_t: float = 0.0
+var _rot: float = 0.0   # keeps continuity between patterns
+var _telegraph_pts: PackedVector2Array = PackedVector2Array()
+var _telegraph_t: float = 0.0
 
 func _ready() -> void:
 	_rng.randomize()
-	if has_node("Sfx"):
-		_sfx = $Sfx
-	_telegraph.clear_points()
-	call_deferred("_pattern_cycle")
+	set_process(true)
 
-func _pattern_cycle() -> void:
-	while is_inside_tree():
-		await _run_random_pattern()
-		var wait_time: float = wave_period * 0.4
-		await get_tree().create_timer(wait_time).timeout
+func _process(delta: float) -> void:
+	_elapsed += delta
+	_pattern_t -= delta
+	if _telegraph_t > 0.0:
+		_telegraph_t -= delta
 
-func _run_random_pattern() -> void:
-	var choice: int = _rng.randi_range(0, 2)
-	if choice == 0:
-		await _pattern_arc_sweep()
-	elif choice == 1:
-		await _pattern_rotating_fan()
-	else:
-		await _pattern_spiral_gush()
+	if _pattern_t <= 0.0:
+		_run_random_pattern()
+		_pattern_t = pattern_interval
 
-func _g_heat() -> int:
-	# Prefer /root/GameState if present; else fake tiers by time.
-	if has_node("/root/GameState"):
-		var gs: Node = get_node("/root/GameState")
-		# If GameState has a 'heat' property, use it
-		if "heat" in gs:
-			return int(gs.heat)
-	var t: float = Time.get_ticks_msec() / 1000.0
-	if t < 60.0:
+	queue_redraw()  # (Godot 4) request _draw
+
+func _draw() -> void:
+	# furnace body (simple disc)
+	draw_circle(Vector2.ZERO, 10.0, Color(0.1, 0.1, 0.1))
+	draw_circle(Vector2.ZERO, 8.0, Color(0.4, 0.1, 0.1))
+	# telegraph
+	if _telegraph_t > 0.0 and _telegraph_pts.size() > 1:
+		for i in range(_telegraph_pts.size() - 1):
+			draw_line(_telegraph_pts[i], _telegraph_pts[i + 1], Color(1.0, 0.4, 0.1), 2.0, true)
+
+# ---------- difficulty helpers ----------
+
+func _heat() -> int:
+	if _elapsed < 45.0:
 		return 0
-	elif t < 120.0:
+	elif _elapsed < 90.0:
 		return 1
-	elif t < 180.0:
+	elif _elapsed < 135.0:
 		return 2
 	else:
 		return 3
 
-func _speed() -> float:
-	return base_speed + heat_speed_bonus * float(_g_heat())
+func _bullet_speed() -> float:
+	return base_speed + heat_speed_bonus * float(_heat())
 
-# ---------------- Patterns ----------------
+# ---------- patterns (all from center) ----------
+
+func _run_random_pattern() -> void:
+	var choice: int = _rng.randi_range(0, 2)
+	if choice == 0:
+		_pattern_arc_sweep()
+	elif choice == 1:
+		_pattern_rotating_fan()
+	else:
+		_pattern_spiral_stream()
 
 func _pattern_arc_sweep() -> void:
-	var span_deg: int = _rng.randi_range(90, 140)
+	var span_deg: int = _rng.randi_range(100, 160)
 	var center: float = _rot
-	await _telegraph_arc(
-		center - deg_to_rad(span_deg / 2.0),
-		center + deg_to_rad(span_deg / 2.0),
-		telegraph_duration
-	)
-	_spray_arc(center, span_deg, _speed())
-	_pulse_mouth()
-	_rot += deg_to_rad(_rng.randi_range(25, 55))
+	_telegraph_arc(center, span_deg, telegraph_time)
+	await get_tree().create_timer(telegraph_time).timeout
+	_fire_arc(center, span_deg, 7, _bullet_speed())
+	_rot += deg_to_rad(_rng.randi_range(30, 60))
 
 func _pattern_rotating_fan() -> void:
-	var arms: int = _rng.randi_range(3, 5)
-	var duration: float = 2.2 + 0.2 * float(_g_heat())
-	var rate: float = 0.15
-	var spin: float = deg_to_rad(70.0 + 20.0 * float(_g_heat()))
-	var t: float = 0.0
-	while t < duration:
+	var arms: int = 4 + _heat()   # 4..7 arms
+	var bursts: int = 3
+	for j in range(bursts):
 		var base: float = _rot
-		_telegraph_spokes(base, arms, 0.25)
-		await get_tree().create_timer(0.25).timeout
+		_telegraph_spokes(base, arms, 0.22)
+		await get_tree().create_timer(0.22).timeout
 		for i in range(arms):
 			var ang: float = base + TAU * float(i) / float(arms)
-			_fire_bullet(ang, _speed() * 0.9)
-		_pulse_mouth()
-		_rot += spin * rate
-		t += rate
-		await get_tree().create_timer(rate).timeout
+			_fire(ang, _bullet_speed() * 0.95, 6.0)
+		_rot += deg_to_rad(30.0 + 20.0 * float(_heat()))
 
-func _pattern_spiral_gush() -> void:
-	var duration: float = 1.6 + 0.2 * float(_g_heat())
-	var rate: float = 0.05
-	var t: float = 0.0
+func _pattern_spiral_stream() -> void:
+	var dur: float = 1.4 + 0.2 * float(_heat())
+	var rate: float = 0.06
 	var dir: float = _rot
-	var spiral_speed: float = deg_to_rad(180.0 + 60.0 * float(_g_heat()))
-	_telegraph_ring(0.3)
-	await get_tree().create_timer(0.3).timeout
-	while t < duration:
-		_fire_bullet(dir, _speed())
-		dir += spiral_speed * rate
+	var spin: float = deg_to_rad(180.0 + 40.0 * float(_heat()))
+	_telegraph_ring(0.25)
+	await get_tree().create_timer(0.25).timeout
+	var t: float = 0.0
+	while t < dur:
+		_fire(dir, _bullet_speed(), 6.0)
+		dir += spin * rate
 		t += rate
 		await get_tree().create_timer(rate).timeout
-	_pulse_mouth()
 	_rot = dir
 
-# ---------------- Telegraphs ----------------
+# ---------- telegraph drawing ----------
 
-func _telegraph_arc(a0: float, a1: float, dur: float) -> void:
-	_telegraph.clear_points()
+func _telegraph_arc(center: float, span_deg: float, dur: float) -> void:
+	_telegraph_pts.clear()
 	var steps: int = 24
+	var start: float = center - deg_to_rad(span_deg * 0.5)
+	var end: float = center + deg_to_rad(span_deg * 0.5)
 	for i in range(steps + 1):
-		var tt: float = float(i) / float(steps)
-		var ang: float = lerp(a0, a1, tt)
-		_telegraph.add_point(Vector2.RIGHT.rotated(ang) * 48.0)
-	_telegraph.width = 2.0
-	_telegraph.default_color = Color(1, 0.45, 0.1, 0.9)
-	await get_tree().create_timer(dur).timeout
-	_telegraph.clear_points()
+		var t: float = float(i) / float(steps)
+		var ang: float = lerp(start, end, t)
+		_telegraph_pts.append(Vector2.RIGHT.rotated(ang) * 52.0)
+	_telegraph_t = dur
 
 func _telegraph_spokes(base: float, arms: int, dur: float) -> void:
-	_telegraph.clear_points()
-	var pts: PackedVector2Array = PackedVector2Array()
+	_telegraph_pts.clear()
 	for i in range(arms):
 		var ang: float = base + TAU * float(i) / float(arms)
-		pts.append(Vector2.ZERO)
-		pts.append(Vector2.RIGHT.rotated(ang) * 40.0)
-	_telegraph.points = pts
-	_telegraph.width = 2.0
-	_telegraph.default_color = Color(1, 0.7, 0.2, 0.9)
-	await get_tree().create_timer(dur).timeout
-	_telegraph.clear_points()
+		_telegraph_pts.append(Vector2.ZERO)
+		_telegraph_pts.append(Vector2.RIGHT.rotated(ang) * 44.0)
+	_telegraph_t = dur
 
 func _telegraph_ring(dur: float) -> void:
-	_telegraph.clear_points()
-	var steps: int = 32
+	_telegraph_pts.clear()
+	var steps: int = 28
 	for i in range(steps + 1):
 		var ang: float = TAU * float(i) / float(steps)
-		_telegraph.add_point(Vector2.RIGHT.rotated(ang) * 36.0)
-	_telegraph.width = 2.0
-	_telegraph.default_color = Color(1, 0.2, 0.0, 0.9)
-	await get_tree().create_timer(dur).timeout
-	_telegraph.clear_points()
+		_telegraph_pts.append(Vector2.RIGHT.rotated(ang) * 40.0)
+	_telegraph_t = dur
 
-# ---------------- Firing helpers ----------------
+# ---------- firing ----------
 
-func _spray_arc(center_ang: float, span_deg: float, speed: float) -> void:
-	var count: int = int(ceil(span_deg / arc_bullet_spacing_deg))
+func _fire_arc(center_ang: float, span_deg: float, count: int, speed: float) -> void:
+	if count <= 0:
+		return
 	var start: float = center_ang - deg_to_rad(span_deg * 0.5)
+	var step: float = deg_to_rad(span_deg) / float(count - 1)
 	for i in range(count):
-		var a: float = start + deg_to_rad(float(i) * arc_bullet_spacing_deg)
-		_fire_bullet(a, speed)
+		var a: float = start + step * float(i)
+		_fire(a, speed, 6.0)
 
-func _fire_bullet(angle: float, speed: float, lifetime: float = 6.0) -> void:
-	if is_instance_valid(_pool):
-		var vel: Vector2 = Vector2.RIGHT.rotated(angle) * speed
-		if _pool.has_method("fire"):
-			_pool.fire(global_position, vel, lifetime)
-	if _sfx and _sfx.stream:
-		_sfx.play()
-
-func _pulse_mouth() -> void:
-	if has_node("Mouth"):
-		var m: Node2D = $Mouth
-		m.scale = Vector2(1.12, 1.12)
-		await get_tree().process_frame
-		m.scale = Vector2.ONE
+func _fire(angle: float, speed: float, lifetime: float) -> void:
+	if bullet_scene == null:
+		return
+	var b: Node = bullet_scene.instantiate()
+	if not (b is Bullet):
+		# If someone swapped the scene to a different script, try generic init
+		if b is Area2D:
+			var area: Area2D = b as Area2D
+			if area.has_variable("velocity"):
+				area.set("velocity", Vector2.RIGHT.rotated(angle) * speed)
+		add_child(b)
+		b.global_position = global_position
+		return
+	var bullet: Bullet = b as Bullet
+	bullet.velocity = Vector2.RIGHT.rotated(angle) * speed
+	bullet.lifetime = lifetime
+	add_child(bullet)
+	bullet.global_position = global_position

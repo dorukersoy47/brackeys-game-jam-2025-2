@@ -1,33 +1,31 @@
 extends Area2D
 class_name Bullet
 
-@export var speed := 140.0
-var velocity := Vector2.ZERO
-var lifetime := 4.0
-var alive := false
+@export var lifetime: float = 6.0
 
-func fire(pos: Vector2, vel: Vector2, life: float) -> void:
-	global_position = pos
-	velocity = vel
-	lifetime = life
-	alive = true
-	visible = true
-	monitoring = true
+var velocity: Vector2 = Vector2.ZERO
+var _age: float = 0.0
 
-func _physics_process(delta: float) -> void:
-	if not alive:
+func _ready() -> void:
+	# Detect player hits
+	body_entered.connect(_on_body_entered)
+	set_process(true)
+
+func _process(delta: float) -> void:
+	# Move
+	position += velocity * delta
+	_age += delta
+	if _age >= lifetime:
+		queue_free()
 		return
-	lifetime -= delta
-	if lifetime <= 0.0:
-		_despawn()
-		return
-	global_position += velocity * delta
+	queue_redraw()  # (Godot 4) request _draw
 
 func _on_body_entered(body: Node) -> void:
-	if body.is_in_group("player"):
-		_despawn()
+	# If player has take_hit(), call it; then remove bullet
+	if body and body.has_method("take_hit"):
+		body.call("take_hit")
+	queue_free()
 
-func _despawn() -> void:
-	alive = false
-	visible = false
-	monitoring = false
+func _draw() -> void:
+	# Simple visible bullet (orange disc)
+	draw_circle(Vector2.ZERO, 3.0, Color(1.0, 0.5, 0.1))

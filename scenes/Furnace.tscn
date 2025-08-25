@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://kwnsaaelkfhe" path="res://scripts/gameplay/Furnace.gd" id="1_rld0g"]
 
 [node name="Furnace" type="Node2D"]
+z_index = 5
 script = ExtResource("1_rld0g")
 
 [node name="Mouth" type="Sprite2D" parent="."]
