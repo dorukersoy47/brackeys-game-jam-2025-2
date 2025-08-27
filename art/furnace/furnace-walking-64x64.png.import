@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bitjsd73s6g4q"
-path="res://.godot/imported/furnace-walking-64x64.png-d4fb82134f8a0104af18c0d556ed417b.ctex"
+path="res://.godot/imported/furnace-walking-64x64.png-d17685f00a82c844aba6018796fdb938.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://art/furnace-walking-64x64.png"
-dest_files=["res://.godot/imported/furnace-walking-64x64.png-d4fb82134f8a0104af18c0d556ed417b.ctex"]
+source_file="res://art/furnace/furnace-walking-64x64.png"
+dest_files=["res://.godot/imported/furnace-walking-64x64.png-d17685f00a82c844aba6018796fdb938.ctex"]
 
 [params]
 
