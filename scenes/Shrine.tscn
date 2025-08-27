@@ -1,6 +1,6 @@
 [gd_scene load_steps=3 format=3 uid="uid://b644o6i01uaae"]
 
-[ext_resource type="Script" uid="uid://cgla438mct017" path="res://scripts/gameplay/Shrine.gd" id="1_dogoe"]
+[ext_resource type="Script" path="res://scripts/gameplay/Shrine.gd" id="1_dogoe"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_0esm0"]
 

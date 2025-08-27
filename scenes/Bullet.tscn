@@ -4,7 +4,7 @@
 [ext_resource type="Texture2D" uid="uid://d0d7hqjg4u26o" path="res://art/bullets/fireball-32x32.png" id="2_p1sfj"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_2ropf"]
-radius = 8.0
+radius = 9.0
 
 [node name="Bullet" type="Area2D"]
 collision_layer = 8
@@ -12,8 +12,10 @@ script = ExtResource("1_hf8mt")
 fireball_sprite = ExtResource("2_p1sfj")
 fireball_tilt_degrees = -135.0
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
-shape = SubResource("CircleShape2D_2ropf")
-
 [node name="Sprite2D" type="Sprite2D" parent="."]
+position = Vector2(0, -1)
 texture = ExtResource("2_p1sfj")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(-1, 1)
+shape = SubResource("CircleShape2D_2ropf")
