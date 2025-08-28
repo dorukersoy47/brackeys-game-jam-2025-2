@@ -181,6 +181,6 @@ func create_impact_material() -> ParticleProcessMaterial:
 func _despawn() -> void:
 	alive = false
 	visible = false
-	monitoring = false
+	set_deferred("monitoring", false)
 	if trail_particles:
 		trail_particles.emitting = false
