@@ -10,7 +10,7 @@ config_version=5
 
 [application]
 
-config/name="brackeys-game-jam-2025-yyyy"
+config/name="brackeys-game-jam-2025-2"
 run/main_scene="uid://8r8e2ou6bsg4"
 config/features=PackedStringArray("4.4", "GL Compatibility")
 config/icon="res://icon.svg"

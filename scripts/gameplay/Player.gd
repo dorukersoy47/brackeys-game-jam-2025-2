@@ -2,11 +2,11 @@ extends CharacterBody2D
 class_name Player
 
 @onready var save: Node = get_node("/root/Save")
-@onready var gs: GameState = get_node("/root/GameState") as GameState
+@onready var gs: GameStateData = get_node("/root/GameState") as GameStateData
 @onready var camera: Camera2D = get_viewport().get_camera_2d()
 @onready var rng: RNGService = get_node("/root/RNG") as RNGService
 
-@export var hurtbox_path: NodePath   # <-- set this to your CollisionShape2D (e.g., "Hitbox")
+@export var hurtbox_path: NodePath
 
 const BASE_SPEED := 220.0
 @export var max_hp := 3
@@ -20,7 +20,6 @@ var is_dashing := false
 var cashout_hold := 0.0
 var cashout_time := 2.0
 
-# Damage effects
 var damage_flash_timer := 0.0
 var invulnerable_timer := 0.0
 const INVULNERABLE_TIME := 1.0
@@ -30,15 +29,12 @@ var _hurtbox: CollisionShape2D = null
 func _ready() -> void:
 	add_to_group("player")
 
-	# --- CRITICAL: ensure correct collision bits ---
-	# Player is layer 1, detects EnemyBullet (4) and optionally World (5)
+	# Collision: Player is layer 1, detects EnemyBullet (4)
 	collision_layer = 0
-	set_collision_layer_value(1, true)     # I am Player
+	set_collision_layer_value(1, true)
 	collision_mask = 0
-	set_collision_mask_value(4, true)      # I detect EnemyBullet
-	# set_collision_mask_value(5, true)    # uncomment if you need to collide with World
+	set_collision_mask_value(4, true)
 
-	# Hook hurtbox safely (so dash i-frames actually toggle the right node)
 	if hurtbox_path != NodePath(""):
 		_hurtbox = get_node_or_null(hurtbox_path) as CollisionShape2D
 	if _hurtbox == null:
@@ -48,7 +44,6 @@ func _ready() -> void:
 
 	gs.connect("request_player_hp_delta", _on_hp_delta)
 
-	# upgrades
 	max_hp = 3 + save.get_upgrade("hp")
 	hp = max_hp
 	dash_iframes += save.get_upgrade("dash_iframes") * 0.05
@@ -56,11 +51,16 @@ func _ready() -> void:
 
 	_update_health_ui()
 
-func _physics_process(_delta: float) -> void:
+func _physics_process(delta: float) -> void:
+	# BLOCK input/physics until the run starts
+	if not gs or not gs.running:
+		velocity = Vector2.ZERO
+		return
+
 	_update_movement()
-	_update_dash(_delta)
-	_update_cashout(_delta)
-	_update_damage_effects(_delta)
+	_update_dash(delta)
+	_update_cashout(delta)
+	_update_damage_effects(delta)
 
 func _update_movement() -> void:
 	var dir := Vector2.ZERO
@@ -74,6 +74,7 @@ func _update_movement() -> void:
 		spd *= 0.5
 	if is_dashing:
 		spd *= 2.0
+
 	velocity = dir * spd
 	move_and_slide()
 

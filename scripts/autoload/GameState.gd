@@ -1,3 +1,4 @@
+# res://autoload/GameState.gd
 extends Node
 class_name GameStateData
 
@@ -11,6 +12,7 @@ signal pulse_started()
 signal pulse_finished(success: bool)
 signal request_player_hp_delta(delta: float)
 signal run_over(extracted: bool)
+signal run_started()   # <-- NEW
 
 # Run state
 var running := false
@@ -62,6 +64,7 @@ func start_run() -> void:
 	cashout_bonus = Save.get_upgrade("cashout") * 0.2
 	emit_signal("bm_changed", bm)
 	emit_signal("coins_changed", unbanked)
+	emit_signal("run_started")   # <-- NEW
 
 func end_run(extracted: bool) -> void:
 	running = false
@@ -167,11 +170,9 @@ func apply_temptation(id: String) -> void:
 			emit_signal("request_player_hp_delta", -0.25) # Player interprets as % current HP
 			add_bm(0.6)
 		"bring_the_heat":
-			# PatternController listens to trigger an elite burst and drop
 			get_tree().call_group("pattern_controller", "trigger_elite_burst")
 		"squeeze_the_circle":
-			# Arena listens to shrink and coin rate +20%
 			coin_rate_bonus += (base_coin_rate + coin_rate_bonus) * 0.2
-			get_tree().call_group("arena", "shrink_arena", 0.10)
+			get_tree().call_group("azrena", "shrink_arena", 0.10)
 		_:
 			pass
