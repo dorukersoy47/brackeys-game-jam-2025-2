@@ -1,69 +1,134 @@
 extends CanvasLayer
-# No class_name on purpose (avoids global-class conflicts)
+class_name EndOverlay
 
-signal back_to_menu
+# --- Assign in inspector (preferred) ---
+@export var dim_path: NodePath          # ColorRect "Dim"
+@export var panel_path: NodePath        # Panel "Panel"
+@export var title_path: NodePath        # Label "Title"
+@export var stats_path: NodePath        # Label "Stats"
+@export var back_button_path: NodePath  # Button "BackButton"
+@export var start_overlay_path: NodePath  # StartOverlay (CanvasLayer) in Main
 
-# Autoloads
-var gs: GameStateData = null
+@onready var gs: GameStateData = get_node("/root/GameState") as GameStateData
+@onready var save_node: Node = get_node("/root/Save")
 
-# Scene refs (must match EndOverlay.tscn)
-var _root: Control = null
-var _dim: ColorRect = null
-var _panel: Panel = null
-var _title: Label = null
-var _stats: Label = null
-var _btn_back: Button = null
-
-# Data
-var _extracted: bool = false
-var _survival: float = 0.0
-var _peak_bm: float = 1.0
-var _biscuits: int = 0
+var dim: ColorRect = null
+var panel: Panel = null
+var title_lbl: Label = null
+var stats_lbl: Label = null
+var back_btn: Button = null
+var start_overlay: CanvasLayer = null
 
 func _ready() -> void:
-	layer = 95                       # below StartOverlay (100), above game UI (50)
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	gs = get_node_or_null("/root/GameState") as GameStateData
+	layer = 95
+	visible = false
 
 	_resolve_refs()
 
-	# Block clicks to the game; allow panel to receive input
-	if _dim:
-		_dim.mouse_filter = Control.MOUSE_FILTER_STOP
-	if _btn_back and not _btn_back.pressed.is_connected(_on_back):
-		_btn_back.pressed.connect(_on_back)
+	# Let clicks pass through the dimmer; the Panel will catch them.
+	if dim:
+		dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if panel:
+		panel.mouse_filter = Control.MOUSE_FILTER_STOP
 
-	_render_text()
-
-func _rescue(v: Node) -> bool:
-	return v != null and is_instance_valid(v)
+	# Wire button + game over signal
+	if back_btn and not back_btn.pressed.is_connected(_on_back_to_menu):
+		back_btn.pressed.connect(_on_back_to_menu)
+	if gs and not gs.run_over.is_connected(_on_run_over):
+		gs.run_over.connect(_on_run_over)
 
 func _resolve_refs() -> void:
-	_root = get_node_or_null("Root") as Control
-	_dim = get_node_or_null("Root/Dim") as ColorRect
-	_panel = get_node_or_null("Root/Center/Panel") as Panel
-	_title = get_node_or_null("Root/Center/Panel/VBox/Title") as Label
-	_stats = get_node_or_null("Root/Center/Panel/VBox/Stats") as Label
-	_btn_back = get_node_or_null("Root/Center/Panel/VBox/BackButton") as Button
+	dim = _get_node_safe(dim_path, "Dim") as ColorRect
+	panel = _get_node_safe(panel_path, "Panel") as Panel
+	title_lbl = _get_node_safe(title_path, "Title") as Label
+	stats_lbl = _get_node_safe(stats_path, "Stats") as Label
+	back_btn = _get_node_safe(back_button_path, "BackButton") as Button
 
-func setup(extracted: bool, survival: float, peak_bm: float, biscuits: int) -> void:
-	_extracted = extracted
-	_survival = survival
-	_peak_bm = peak_bm
-	_biscuits = biscuits
-	_render_text()
+	# StartOverlay: prefer exported path, else find by name, else by group "start_menu"
+	if start_overlay_path != NodePath("") and has_node(start_overlay_path):
+		start_overlay = get_node(start_overlay_path) as CanvasLayer
+	else:
+		var found := find_child("StartOverlay", true, false)
+		if found and found is CanvasLayer:
+			start_overlay = found as CanvasLayer
+		else:
+			var candidates := get_tree().get_nodes_in_group("start_menu")
+			if candidates.size() > 0 and candidates[0] is CanvasLayer:
+				start_overlay = candidates[0] as CanvasLayer
 
-func _render_text() -> void:
-	if not _rescue(_title) or not _rescue(_stats):
+func _get_node_safe(path: NodePath, fallback: String) -> Node:
+	if path != NodePath("") and has_node(path):
+		return get_node(path)
+	return find_child(fallback, true, false)
+
+# -------------------- Flow --------------------
+
+func _on_run_over(extracted: bool) -> void:
+	# Hide StartOverlay while showing the summary
+	if start_overlay:
+		start_overlay.visible = false
+
+	# Title
+	if title_lbl:
+		if extracted:
+			title_lbl.text = "Extraction Complete"
+		else:
+			title_lbl.text = "Run Over"
+
+	# Stats content
+	_update_stats_text(extracted)
+
+	visible = true
+	if back_btn:
+		back_btn.grab_focus()
+
+func _on_back_to_menu() -> void:
+	visible = false
+	get_tree().paused = false
+	if start_overlay:
+		start_overlay.visible = true
+
+# -------------------- Stats --------------------
+
+func _update_stats_text(extracted: bool) -> void:
+	if stats_lbl == null or gs == null:
 		return
 
-	if _extracted:
-		_title.text = "Extraction Complete!"
+	var survived: float = gs.survival_time
+	var current_bm: float = gs.bm
+	var at_risk: int = gs.unbanked
+	var banked_total: int = gs.banked
+
+	var best_survival: float = 0.0
+	var best_peak_bm: float = 1.0
+	var best_biscuits: int = 0
+
+	# Safely read best stats from Save
+	if typeof(save_node) == TYPE_OBJECT:
+		var d: Variant = save_node.get("data")
+		if typeof(d) == TYPE_DICTIONARY:
+			var best: Dictionary = (d as Dictionary).get("best", {}) as Dictionary
+			if best.has("survival"):
+				best_survival = float(best.get("survival"))
+			if best.has("peak_bm"):
+				best_peak_bm = float(best.get("peak_bm"))
+			if best.has("biscuits"):
+				best_biscuits = int(best.get("biscuits"))
+
+	var status_line := ""
+	if extracted:
+		status_line = "You extracted successfully."
 	else:
-		_title.text = "Run Over"
+		status_line = "You were defeated."
 
-	_stats.text = "Survival: %0.1fs\nPeak BM: ×%0.1f\nBiscuits: %d" % [_survival, _peak_bm, _biscuits]
+	var lines: Array[String] = []
+	lines.append(status_line)
+	lines.append("Survived: %0.1f\nCurrent BM: ×%0.1f"% [survived, current_bm])
+	lines.append("At-Risk (lost if defeated): %d" % at_risk)
+	lines.append("Banked (total): %d" % banked_total)
+	lines.append("--- Best Records ---")
+	lines.append("Best Survival:\n%0.1f s\nPeak BM: ×%0.1f\nBiscuits: %d"
+		% [best_survival, best_peak_bm, best_biscuits])
 
-func _on_back() -> void:
-	emit_signal("back_to_menu")
-	queue_free()
+	stats_lbl.text = "\n".join(lines)

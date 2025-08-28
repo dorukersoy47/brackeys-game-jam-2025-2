@@ -1,25 +1,29 @@
 extends CanvasLayer
+class_name ShopOverlay
 
-signal overlay_closed
+signal closed
 
-# Autoloads
-var save: Node = null
-var gs: GameStateData = null
+@export var pause_game: bool = true
 
-# Scene refs
-var _root: Control = null
-var _dim: ColorRect = null
-var _panel: Panel = null
-var _title: Label = null
-var _btn_close: Button = null
-var _coins_lbl: Label = null
-var _btn_upgrades: Button = null
-var _btn_items: Button = null
-var _items_container: VBoxContainer = null
+@export var dim_path: NodePath
+@export var panel_path: NodePath
+@export var close_button_path: NodePath
+@export var tab_upgrades_path: NodePath
+@export var tab_items_path: NodePath
+@export var coins_label_path: NodePath
+@export var list_container_path: NodePath
 
-var current_category: String = "upgrades"
+@onready var save_node: Node = get_node("/root/Save")
 
-var shop_items: Array[Dictionary] = [
+var dim: ColorRect
+var panel: Panel
+var btn_close: Button
+var btn_tab_up: Button
+var btn_tab_it: Button
+var lbl_coins: Label
+var list_container: VBoxContainer
+
+var shop_items: Array = [
 	{"id":"health_upgrade","name":"Health Upgrade","description":"Increase max HP by 1","cost":100,"max_level":5,"upgrade_key":"hp"},
 	{"id":"speed_upgrade","name":"Speed Boost","description":"Increase movement speed by 10%","cost":80,"max_level":3,"upgrade_key":"move"},
 	{"id":"dash_upgrade","name":"Dash Enhancement","description":"Increase dash invulnerability frames","cost":120,"max_level":3,"upgrade_key":"dash_iframes"},
@@ -29,169 +33,160 @@ var shop_items: Array[Dictionary] = [
 ]
 
 func _ready() -> void:
-	# Layer below StartOverlay (100) but above game UI (50)
-	layer = 90
+	# HIGHER than StartOverlay
+	layer = max(layer, 200)
 	process_mode = Node.PROCESS_MODE_ALWAYS
-
-	save = get_node_or_null("/root/Save")
-	gs = get_node_or_null("/root/GameState") as GameStateData
+	visible = true
 
 	_resolve_refs()
-	_harden_input()
-
-	if not _validate_required_nodes():
-		push_error("[ShopOverlay] Missing required nodes. Check scene paths.")
-		return
-
-	if _btn_close and not _btn_close.pressed.is_connected(_on_close):
-		_btn_close.pressed.connect(_on_close)
-	if _btn_upgrades and not _btn_upgrades.pressed.is_connected(func(): _show_category("upgrades")):
-		_btn_upgrades.pressed.connect(func(): _show_category("upgrades"))
-	if _btn_items and not _btn_items.pressed.is_connected(func(): _show_category("items")):
-		_btn_items.pressed.connect(func(): _show_category("items"))
-
+	_setup_modal_behavior()
+	_connect_buttons()
 	_update_coins_label()
-	_show_category("upgrades")
-	set_process_input(true)
+	_show_upgrades_tab()
 
-func _input(event: InputEvent) -> void:
+	# Only pause if opened from gameplay; Start menu will set pause_game=false
+	if pause_game:
+		get_tree().paused = true
+
+func _exit_tree() -> void:
+	if pause_game:
+		get_tree().paused = false
+
+func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
 		_on_close()
 
+# ---------- Setup ----------
+
 func _resolve_refs() -> void:
-	_root = get_node_or_null("Root") as Control
-	_dim = get_node_or_null("Root/Dim") as ColorRect
-	_panel = get_node_or_null("Root/Center/Panel") as Panel
-	_title = get_node_or_null("Root/Center/Panel/VBox/Header/Title") as Label
-	_btn_close = get_node_or_null("Root/Center/Panel/VBox/Header/Close") as Button
-	_coins_lbl = get_node_or_null("Root/Center/Panel/VBox/Bar/CoinsLabel") as Label
-	_btn_upgrades = get_node_or_null("Root/Center/Panel/VBox/Bar/Tabs/Upgrades") as Button
-	_btn_items = get_node_or_null("Root/Center/Panel/VBox/Bar/Tabs/Items") as Button
-	_items_container = get_node_or_null("Root/Center/Panel/VBox/Scroll/ItemsContainer") as VBoxContainer
+	dim = _get_node_safe(dim_path, "Dim") as ColorRect
+	panel = _get_node_safe(panel_path, "Panel") as Panel
+	btn_close = _get_node_safe(close_button_path, "CloseButton") as Button
+	btn_tab_up = _get_node_safe(tab_upgrades_path, "TabUpgrades") as Button
+	btn_tab_it = _get_node_safe(tab_items_path, "TabItems") as Button
+	lbl_coins = _get_node_safe(coins_label_path, "CoinsLabel") as Label
+	list_container = _get_node_safe(list_container_path, "ItemsList") as VBoxContainer
 
-func _harden_input() -> void:
-	# Dim should STOP events, panel should accept, everything else default
-	if _dim:
-		_dim.mouse_filter = Control.MOUSE_FILTER_STOP
-	if _panel:
-		_panel.mouse_filter = Control.MOUSE_FILTER_PASS
+func _get_node_safe(path: NodePath, fallback: String) -> Node:
+	if path != NodePath("") and has_node(path):
+		return get_node(path)
+	return find_child(fallback, true, false)
 
-func _validate_required_nodes() -> bool:
-	var ok := true
-	ok = ok and _root != null
-	ok = ok and _panel != null
-	ok = ok and _items_container != null
-	ok = ok and _btn_close != null
-	ok = ok and _btn_upgrades != null
-	ok = ok and _btn_items != null
-	ok = ok and _coins_lbl != null
-	return ok
+func _setup_modal_behavior() -> void:
+	# Dim should block clicks to the StartOverlay behind
+	if dim:
+		dim.mouse_filter = Control.MOUSE_FILTER_STOP
+		dim.z_index = 0
+		# ensure full screen coverage
+		dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	if panel:
+		panel.mouse_filter = Control.MOUSE_FILTER_STOP
+		panel.z_index = 1
 
-# -------- Rendering ----------
-func _show_category(name: String) -> void:
-	current_category = name
-	_clear_items()
-	if name == "upgrades":
-		if _items_container: _render_upgrades(_items_container)
-	else:
-		if _items_container: _render_items_placeholder(_items_container)
+func _connect_buttons() -> void:
+	if btn_close and not btn_close.pressed.is_connected(_on_close):
+		btn_close.pressed.connect(_on_close)
+	if btn_tab_up and not btn_tab_up.pressed.is_connected(_show_upgrades_tab):
+		btn_tab_up.pressed.connect(_show_upgrades_tab)
+	if btn_tab_it and not btn_tab_it.pressed.is_connected(_show_items_tab):
+		btn_tab_it.pressed.connect(_show_items_tab)
 
-func _clear_items() -> void:
-	if _items_container == null:
+# ---------- Close ----------
+
+func _on_close() -> void:
+	emit_signal("closed")
+	queue_free()
+
+# ---------- Tabs / UI ----------
+
+func _show_upgrades_tab() -> void:
+	_clear_list()
+	_populate_upgrades()
+
+func _show_items_tab() -> void:
+	_clear_list()
+	_populate_items_placeholder()
+
+func _update_coins_label() -> void:
+	if lbl_coins and typeof(save_node) == TYPE_OBJECT:
+		var coins := int((save_node.get("data") as Dictionary).get("coins_banked", 0))
+		lbl_coins.text = "Coins: %d" % coins
+
+func _clear_list() -> void:
+	if list_container:
+		for c in list_container.get_children():
+			c.queue_free()
+
+func _populate_upgrades() -> void:
+	if list_container == null or typeof(save_node) != TYPE_OBJECT:
 		return
-	for c in _items_container.get_children():
-		c.queue_free()
+	var data := save_node.get("data") as Dictionary
+	var ups := data.get("upgrades", {}) as Dictionary
+	var coins := int(data.get("coins_banked", 0))
 
-func _render_upgrades(container: VBoxContainer) -> void:
-	for item_data in shop_items:
-		var upgrade_key: String = String(item_data.get("upgrade_key", ""))
-		var max_level: int = int(item_data.get("max_level", 0))
-		var cost: int = int(item_data.get("cost", 0))
-		var nm: String = String(item_data.get("name", ""))
-		var desc: String = String(item_data.get("description", ""))
-		var cur_coins: int = 0
-		if save and "coins_banked" in save.data:
-			cur_coins = int(save.data.get("coins_banked", 0))
-		var current_level: int = 0
-		if save:
-			current_level = save.get_upgrade(upgrade_key)
-		var can_upgrade: bool = (current_level < max_level)
-		var can_afford: bool = (cur_coins >= cost)
-
-		var card := Panel.new()
-		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		card.custom_minimum_size = Vector2(0, 80)
-		container.add_child(card)
-
-		var v := VBoxContainer.new()
-		v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		card.add_child(v)
-
-		var title := Label.new()
-		title.text = "%s (Level %d/%d)" % [nm, current_level, max_level]
-		title.add_theme_font_size_override("font_size", 16)
-		v.add_child(title)
-
-		var desc_lbl := Label.new()
-		desc_lbl.text = desc
-		desc_lbl.modulate = Color(0.8, 0.8, 0.8)
-		v.add_child(desc_lbl)
+	for item_dict in shop_items:
+		var item := item_dict as Dictionary
+		var level := int(ups.get(item.get("upgrade_key"), 0))
+		var max_level := int(item.get("max_level"))
+		var cost := int(item.get("cost"))
+		var can_upgrade := level < max_level
+		var can_afford := coins >= cost
 
 		var row := HBoxContainer.new()
 		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		v.add_child(row)
 
-		var cost_lbl := Label.new()
-		cost_lbl.text = "Cost: %d" % cost
-		cost_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(cost_lbl)
+		var name_lbl := Label.new()
+		name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		name_lbl.text = "%s (Lv %d/%d)" % [item.get("name"), level, max_level]
+		row.add_child(name_lbl)
+
+		var desc_lbl := Label.new()
+		desc_lbl.text = str(item.get("description"))
+		desc_lbl.add_theme_color_override("font_color", Color.GRAY)
+		row.add_child(desc_lbl)
 
 		var buy_btn := Button.new()
+		if can_upgrade and can_afford:
+			buy_btn.text = "Buy %d" % cost
+			buy_btn.pressed.connect(func(): _buy_upgrade(item))
+		elif not can_upgrade:
+			buy_btn.text = "MAX"
+			buy_btn.disabled = true
+		else:
+			buy_btn.text = "Can't Afford"
+			buy_btn.disabled = true
 		row.add_child(buy_btn)
 
-		if can_upgrade and can_afford:
-			buy_btn.text = "Buy"
-			buy_btn.pressed.connect(func(): _buy_upgrade(item_data))
-		else:
-			if not can_upgrade:
-				buy_btn.text = "MAX"
-				buy_btn.disabled = true
-			else:
-				buy_btn.text = "Can't Afford"
-				buy_btn.disabled = true
+		list_container.add_child(row)
 
-func _render_items_placeholder(container: VBoxContainer) -> void:
-	var lbl := Label.new()
-	lbl.text = "Consumable items coming soon!"
-	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl.add_theme_font_size_override("font_size", 18)
-	container.add_child(lbl)
-
-# -------- Actions ----------
-func _buy_upgrade(item_data: Dictionary) -> void:
-	if save == null:
+func _populate_items_placeholder() -> void:
+	if list_container == null:
 		return
-	var cost: int = int(item_data.get("cost", 0))
-	var upgrade_key: String = String(item_data.get("upgrade_key", ""))
+	var info := Label.new()
+	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	info.text = "Consumables coming soon!"
+	info.add_theme_font_size_override("font_size", 18)
+	list_container.add_child(info)
 
-	var cur_coins: int = int(save.data.get("coins_banked", 0))
-	if cur_coins < cost:
+func _buy_upgrade(item: Dictionary) -> void:
+	if typeof(save_node) != TYPE_OBJECT:
+		return
+	var data := save_node.get("data") as Dictionary
+	var coins := int(data.get("coins_banked", 0))
+	var cost := int(item.get("cost"))
+
+	if coins < cost:
 		return
 
-	save.data["coins_banked"] = cur_coins - cost
-	save.inc_upgrade(upgrade_key)
+	data["coins_banked"] = coins - cost
+
+	var ups := data.get("upgrades", {}) as Dictionary
+	var key := str(item.get("upgrade_key"))
+	ups[key] = int(ups.get(key, 0)) + 1
+	data["upgrades"] = ups
+
+	if save_node.has_method("save_game"):
+		save_node.call("save_game")
 
 	_update_coins_label()
-	_show_category(current_category)
-
-func _update_coins_label() -> void:
-	if _coins_lbl == null or save == null:
-		return
-	var banked: int = int(save.data.get("coins_banked", 0))
-	_coins_lbl.text = "Coins: %d" % banked
-
-# -------- Close ----------
-func _on_close() -> void:
-	visible = false
-	queue_free()
-	emit_signal("overlay_closed")
+	_show_upgrades_tab()

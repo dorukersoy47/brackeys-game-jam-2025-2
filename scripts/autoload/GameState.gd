@@ -1,4 +1,3 @@
-# res://autoload/GameState.gd
 extends Node
 class_name GameStateData
 
@@ -12,7 +11,7 @@ signal pulse_started()
 signal pulse_finished(success: bool)
 signal request_player_hp_delta(delta: float)
 signal run_over(extracted: bool)
-signal run_started()   # <-- NEW
+signal run_started()   # <-- NEW (UI listens to this to become visible)
 
 # Run state
 var running := false
@@ -64,7 +63,7 @@ func start_run() -> void:
 	cashout_bonus = Save.get_upgrade("cashout") * 0.2
 	emit_signal("bm_changed", bm)
 	emit_signal("coins_changed", unbanked)
-	emit_signal("run_started")   # <-- NEW
+	emit_signal("run_started")  # <-- tell UI to show
 
 func end_run(extracted: bool) -> void:
 	running = false

@@ -6,7 +6,7 @@ class_name Player
 @onready var camera: Camera2D = get_viewport().get_camera_2d()
 @onready var rng: RNGService = get_node("/root/RNG") as RNGService
 
-@export var hurtbox_path: NodePath
+@export var hurtbox_path: NodePath   # set this to the CollisionShape2D used as the hitbox/hurtbox
 
 const BASE_SPEED := 220.0
 @export var max_hp := 3
@@ -29,12 +29,14 @@ var _hurtbox: CollisionShape2D = null
 func _ready() -> void:
 	add_to_group("player")
 
-	# Collision: Player is layer 1, detects EnemyBullet (4)
+	# --- Physics layers/masks ---
 	collision_layer = 0
-	set_collision_layer_value(1, true)
+	set_collision_layer_value(1, true)     # Player layer = 1
 	collision_mask = 0
-	set_collision_mask_value(4, true)
+	set_collision_mask_value(4, true)      # Detect EnemyBullet (layer 4)
+	set_collision_mask_value(5, true)      # Collide with World walls (layer 5)  << IMPORTANT
 
+	# Hook hurtbox
 	if hurtbox_path != NodePath(""):
 		_hurtbox = get_node_or_null(hurtbox_path) as CollisionShape2D
 	if _hurtbox == null:
@@ -44,6 +46,7 @@ func _ready() -> void:
 
 	gs.connect("request_player_hp_delta", _on_hp_delta)
 
+	# upgrades
 	max_hp = 3 + save.get_upgrade("hp")
 	hp = max_hp
 	dash_iframes += save.get_upgrade("dash_iframes") * 0.05
@@ -51,16 +54,11 @@ func _ready() -> void:
 
 	_update_health_ui()
 
-func _physics_process(delta: float) -> void:
-	# BLOCK input/physics until the run starts
-	if not gs or not gs.running:
-		velocity = Vector2.ZERO
-		return
-
+func _physics_process(_delta: float) -> void:
 	_update_movement()
-	_update_dash(delta)
-	_update_cashout(delta)
-	_update_damage_effects(delta)
+	_update_dash(_delta)
+	_update_cashout(_delta)
+	_update_damage_effects(_delta)
 
 func _update_movement() -> void:
 	var dir := Vector2.ZERO
@@ -74,9 +72,8 @@ func _update_movement() -> void:
 		spd *= 0.5
 	if is_dashing:
 		spd *= 2.0
-
 	velocity = dir * spd
-	move_and_slide()
+	move_and_slide()  # collides with walls because mask(5) and TM_Walls layer(5)
 
 func _update_dash(delta: float) -> void:
 	dash_cd -= delta

@@ -8,11 +8,12 @@
 [node name="Main" type="Node2D"]
 
 [node name="Camera2D" type="Camera2D" parent="." groups=["camera"]]
-position = Vector2(578, 324)
+position = Vector2(578, 323)
 
 [node name="Arena" parent="." instance=ExtResource("1_rvslj")]
 
 [node name="Ui" parent="." instance=ExtResource("2_0bbpv")]
+layer = 100
 
 [node name="StartOverlay" parent="." instance=ExtResource("1_0bbpv")]
 ui_layer_path = NodePath("../Ui")

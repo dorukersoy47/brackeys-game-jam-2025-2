@@ -1,15 +1,17 @@
-[gd_scene load_steps=2 format=3 uid="uid://ibxmqwxy7eoc"]
+[gd_scene load_steps=3 format=3 uid="uid://ibxmqwxy7eoc"]
 
 [ext_resource type="Script" uid="uid://dkv3pfxhm8qjc" path="res://scripts/ui/StartOverlay.gd" id="1_26e5n"]
+[ext_resource type="FontFile" path="res://fonts/kirifont/Kirifont.tres" id="2_6f4fy"]
 
 [node name="CanvasLayer" type="CanvasLayer"]
+layer = 100
 script = ExtResource("1_26e5n")
 dim_path = NodePath("Root/Dim")
 panel_path = NodePath("Root/Center/Panel")
-btn_start_path = NodePath("Root/Center/Panel/Header/Buttons/StartButton")
-btn_shop_path = NodePath("Root/Center/Panel/Header/Buttons/ShopButton")
-btn_quit_path = NodePath("Root/Center/Panel/Header/Buttons/QuitButton")
-stats_label_path = NodePath("Root/Center/Panel/Header/Stats")
+btn_start_path = NodePath("Root/Center/Panel/Buttons/StartButton")
+btn_shop_path = NodePath("Root/Center/Panel/Buttons/ShopButton")
+btn_quit_path = NodePath("Root/Center/Panel/Buttons/QuitButton")
+stats_label_path = NodePath("Root/Center/Panel/Stats")
 
 [node name="Root" type="Control" parent="."]
 layout_mode = 3
@@ -19,47 +21,87 @@ offset_bottom = 40.0
 
 [node name="Dim" type="ColorRect" parent="Root"]
 layout_mode = 0
-offset_right = 40.0
-offset_bottom = 40.0
+offset_left = 56.0
+offset_top = 63.0
+offset_right = 347.0
+offset_bottom = 583.0
+scale = Vector2(3.45109, 1)
+color = Color(0.382, 0.167, 0.023, 0.525)
+
+[node name="Dim2" type="ColorRect" parent="Root"]
+layout_mode = 0
+offset_left = 56.0
+offset_top = 63.0
+offset_right = 347.0
+offset_bottom = 583.0
+scale = Vector2(1.15586, 1.00072)
+color = Color(0.382, 0.167, 0.023, 0.954)
 
 [node name="Center" type="CenterContainer" parent="Root"]
 layout_mode = 0
-offset_right = 40.0
-offset_bottom = 40.0
+offset_left = 163.0
+offset_top = 230.0
+offset_right = 310.0
+offset_bottom = 394.0
 
 [node name="Panel" type="Panel" parent="Root/Center"]
 layout_mode = 2
 
 [node name="Header" type="VBoxContainer" parent="Root/Center/Panel"]
 layout_mode = 0
-offset_left = -20.0
-offset_top = -20.0
-offset_right = 200.0
-offset_bottom = 92.0
+offset_left = -140.0
+offset_top = -208.0
+offset_right = 356.0
+offset_bottom = 253.0
+scale = Vector2(0.512667, 0.781419)
 
 [node name="Title" type="Label" parent="Root/Center/Panel/Header"]
 layout_mode = 2
-text = "RISK IT FOR THE BISCUIT"
+theme_override_fonts/font = ExtResource("2_6f4fy")
+theme_override_font_sizes/font_size = 100
+text = "BAKING TIME!"
+horizontal_alignment = 1
+autowrap_mode = 1
 
 [node name="Subtitle" type="Label" parent="Root/Center/Panel/Header"]
 layout_mode = 2
+theme_override_fonts/font = ExtResource("2_6f4fy")
+theme_override_font_sizes/font_size = 35
 text = "Dodge flames, bake biscuits."
+horizontal_alignment = 1
+autowrap_mode = 1
 
-[node name="Buttons" type="HBoxContainer" parent="Root/Center/Panel/Header"]
+[node name="Buttons" type="HBoxContainer" parent="Root/Center/Panel"]
 layout_mode = 2
+offset_left = -238.0
+offset_top = 93.0
+offset_right = 258.0
+offset_bottom = 124.0
+scale = Vector2(0.930743, 1.85274)
+alignment = 1
 
-[node name="StartButton" type="Button" parent="Root/Center/Panel/Header/Buttons"]
+[node name="StartButton" type="Button" parent="Root/Center/Panel/Buttons"]
 layout_mode = 2
+theme_override_fonts/font = ExtResource("2_6f4fy")
 text = "Start Baking"
 
-[node name="ShopButton" type="Button" parent="Root/Center/Panel/Header/Buttons"]
+[node name="ShopButton" type="Button" parent="Root/Center/Panel/Buttons"]
 layout_mode = 2
+theme_override_fonts/font = ExtResource("2_6f4fy")
 text = "Shop"
 
-[node name="QuitButton" type="Button" parent="Root/Center/Panel/Header/Buttons"]
+[node name="QuitButton" type="Button" parent="Root/Center/Panel/Buttons"]
 layout_mode = 2
+theme_override_fonts/font = ExtResource("2_6f4fy")
 text = "Quit"
 
-[node name="Stats" type="Label" parent="Root/Center/Panel/Header"]
+[node name="Stats" type="Label" parent="Root/Center/Panel"]
 layout_mode = 2
+offset_left = -130.0
+offset_top = 161.0
+offset_right = -61.0
+offset_bottom = 184.0
+theme_override_fonts/font = ExtResource("2_6f4fy")
+theme_override_font_sizes/font_size = 15
 text = "Stats: "
+vertical_alignment = 2

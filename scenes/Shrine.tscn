@@ -5,6 +5,7 @@
 [sub_resource type="CircleShape2D" id="CircleShape2D_0esm0"]
 
 [node name="Shrine" type="Area2D"]
+collision_layer = 64
 script = ExtResource("1_dogoe")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]

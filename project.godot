@@ -25,6 +25,10 @@ RNG="*res://scripts/autoload/RNG.gd"
 
 window/stretch/mode="canvas_items"
 
+[gui]
+
+theme/custom_font="res://fonts/kirifont/Kirifont.tres"
+
 [input]
 
 move_up={

@@ -10,7 +10,8 @@ radius = 24.0
 radius = 64.0
 
 [node name="Player" type="CharacterBody2D"]
-collision_mask = 10
+z_index = 50
+collision_mask = 120
 script = ExtResource("1_p0vlq")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
