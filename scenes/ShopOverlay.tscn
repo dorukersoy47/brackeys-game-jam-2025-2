@@ -5,6 +5,13 @@
 [node name="ShopOverlay" type="CanvasLayer"]
 layer = 90
 script = ExtResource("1_fyyb4")
+dim_path = NodePath("Root/Dim")
+panel_path = NodePath("Root/Center/Panel")
+close_button_path = NodePath("Root/Center/Panel/VBox/CloseButton")
+tab_upgrades_path = NodePath("Root/Center/Panel/VBox/Bar/Tabs/Upgrades")
+tab_items_path = NodePath("Root/Center/Panel/VBox/Bar/Tabs/Items")
+coins_label_path = NodePath("Root/Center/Panel/VBox/Bar/CoinsLabel")
+list_container_path = NodePath("Root/Center/Panel/VBox/Scroll/ItemsContainer")
 
 [node name="Root" type="Control" parent="."]
 layout_mode = 3
@@ -56,9 +63,11 @@ layout_mode = 2
 
 [node name="Upgrades" type="Button" parent="Root/Center/Panel/VBox/Bar/Tabs"]
 layout_mode = 2
+text = "Upgrades"
 
 [node name="Items" type="Button" parent="Root/Center/Panel/VBox/Bar/Tabs"]
 layout_mode = 2
+text = "Items"
 
 [node name="Scroll" type="ScrollContainer" parent="Root/Center/Panel/VBox"]
 layout_mode = 2
