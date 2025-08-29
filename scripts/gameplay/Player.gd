@@ -2,11 +2,11 @@ extends CharacterBody2D
 class_name Player
 
 @onready var save: Node = get_node("/root/Save")
-@onready var gs: GameState = get_node("/root/GameState") as GameState
+@onready var gs: GameStateData = get_node("/root/GameState") as GameStateData
 @onready var camera: Camera2D = get_viewport().get_camera_2d()
 @onready var rng: RNGService = get_node("/root/RNG") as RNGService
 
-@export var hurtbox_path: NodePath   # <-- set this to your CollisionShape2D (e.g., "Hitbox")
+@export var hurtbox_path: NodePath   # set this to the CollisionShape2D used as the hitbox/hurtbox
 
 const BASE_SPEED := 220.0
 @export var max_hp := 3
@@ -20,7 +20,6 @@ var is_dashing := false
 var cashout_hold := 0.0
 var cashout_time := 2.0
 
-# Damage effects
 var damage_flash_timer := 0.0
 var invulnerable_timer := 0.0
 const INVULNERABLE_TIME := 1.0
@@ -30,15 +29,14 @@ var _hurtbox: CollisionShape2D = null
 func _ready() -> void:
 	add_to_group("player")
 
-	# --- CRITICAL: ensure correct collision bits ---
-	# Player is layer 1, detects EnemyBullet (4) and optionally World (5)
+	# --- Physics layers/masks ---
 	collision_layer = 0
-	set_collision_layer_value(1, true)     # I am Player
+	set_collision_layer_value(1, true)     # Player layer = 1
 	collision_mask = 0
-	set_collision_mask_value(4, true)      # I detect EnemyBullet
-	# set_collision_mask_value(5, true)    # uncomment if you need to collide with World
+	set_collision_mask_value(4, true)      # Detect EnemyBullet (layer 4)
+	set_collision_mask_value(5, true)      # Collide with World walls (layer 5)  << IMPORTANT
 
-	# Hook hurtbox safely (so dash i-frames actually toggle the right node)
+	# Hook hurtbox
 	if hurtbox_path != NodePath(""):
 		_hurtbox = get_node_or_null(hurtbox_path) as CollisionShape2D
 	if _hurtbox == null:
@@ -75,7 +73,7 @@ func _update_movement() -> void:
 	if is_dashing:
 		spd *= 2.0
 	velocity = dir * spd
-	move_and_slide()
+	move_and_slide()  # collides with walls because mask(5) and TM_Walls layer(5)
 
 func _update_dash(delta: float) -> void:
 	dash_cd -= delta

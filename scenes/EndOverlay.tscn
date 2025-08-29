@@ -1,0 +1,59 @@
+[gd_scene load_steps=2 format=3 uid="uid://b3qeb736q5ysw"]
+
+[ext_resource type="Script" uid="uid://bp3a0r46b46vj" path="res://scripts/ui/EndOverlay.gd" id="1_7sbpu"]
+
+[node name="EndOverlay" type="CanvasLayer"]
+layer = 95
+script = ExtResource("1_7sbpu")
+
+[node name="Root" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="ColorRect" type="ColorRect" parent="Root"]
+layout_mode = 0
+offset_left = 173.0
+offset_top = 84.0
+offset_right = 213.0
+offset_bottom = 124.0
+scale = Vector2(19.7762, 11.6949)
+color = Color(0.380392, 0.168627, 0.0235294, 0.956863)
+
+[node name="BackButton" type="Button" parent="Root"]
+layout_mode = 2
+offset_left = 452.0
+offset_top = 499.0
+offset_right = 724.0
+offset_bottom = 530.0
+text = "Go Back"
+
+[node name="CenterContainer" type="CenterContainer" parent="."]
+offset_left = 398.0
+offset_top = 89.0
+offset_right = 438.0
+offset_bottom = 129.0
+scale = Vector2(1.94544, 2.01583)
+
+[node name="Label" type="Label" parent="CenterContainer"]
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="CenterContainer/Label"]
+layout_mode = 0
+offset_left = -73.8185
+offset_top = 8.98933
+offset_right = 104.182
+offset_bottom = 48.9893
+scale = Vector2(0.901999, 0.591057)
+
+[node name="Title" type="Label" parent="CenterContainer/Label/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Run Over
+"
+horizontal_alignment = 1
+
+[node name="Stats" type="Label" parent="CenterContainer/Label/VBox"]
+layout_mode = 2
+text = "Stats"

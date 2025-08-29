@@ -5,7 +5,7 @@
 [sub_resource type="CircleShape2D" id="CircleShape2D_hesur"]
 
 [node name="Pickup" type="Area2D"]
-collision_layer = 33
+collision_layer = 32
 script = ExtResource("1_s6scd")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]

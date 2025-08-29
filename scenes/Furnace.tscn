@@ -8,6 +8,7 @@
 radius = 30.0
 
 [node name="Furnace" type="CharacterBody2D"]
+z_index = 50
 collision_layer = 2
 script = ExtResource("1_rld0g")
 

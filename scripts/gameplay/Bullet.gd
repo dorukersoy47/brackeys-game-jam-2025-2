@@ -6,19 +6,16 @@ var velocity := Vector2.ZERO
 var lifetime := 4.0
 var alive := false
 
-# Bullet type and properties
 enum BulletType { FIREBALL, LASER }
 var bullet_type = BulletType.FIREBALL
 var is_laser := false
 var damage := 1
 
-# Visual effects
 @export var fireball_sprite: Texture2D
 @export var laser_sprite: Texture2D
 @export var fireball_particle_texture: Texture2D
 @export var laser_particle_texture: Texture2D
 
-# Visual settings
 @export var fireball_scale: Vector2 = Vector2(1, 1)
 @export var laser_scale: Vector2 = Vector2(0.3, 2.0)
 @export var fireball_color: Color = Color.ORANGE
@@ -31,12 +28,12 @@ var trail_particles: GPUParticles2D
 func _ready() -> void:
 	original_scale = scale
 
-	# --- Collisions: EnemyBullet (layer 4) hits Player (mask 1) ---
+	# --- Collisions: EnemyBullet (layer 4) hits Player (mask 1) AND World walls (mask 5) ---
 	collision_layer = 0
-	set_collision_layer_value(4, true)
+	set_collision_layer_value(4, true)   # EnemyBullet layer = 4
 	collision_mask = 0
-	set_collision_mask_value(1, true)
-	# set_collision_mask_value(5, true) # enable if bullets should hit World
+	set_collision_mask_value(1, true)    # detect Player
+	set_collision_mask_value(5, true)    # detect World walls  << IMPORTANT
 	monitoring = true
 	monitorable = true
 
@@ -137,12 +134,21 @@ func _physics_process(delta: float) -> void:
 		trail_particles.global_position = global_position - velocity.normalized() * 10.0
 
 func _on_body_entered(body: Node) -> void:
+	# Hit Player?
 	if body.is_in_group("player"):
 		var player := body as Player
 		if player:
 			player.take_damage(damage)
 		_create_impact_effect(global_position)
 		_despawn()
+		return
+
+	# Hit World walls?
+	# Works if TM_Walls is on collision layer 5 and (optionally) group "world"
+	if body.is_in_group("world") or body is TileMap or body is StaticBody2D:
+		_create_impact_effect(global_position)
+		_despawn()
+		return
 
 func _create_impact_effect(pos: Vector2) -> void:
 	var p := GPUParticles2D.new()
@@ -150,7 +156,6 @@ func _create_impact_effect(pos: Vector2) -> void:
 	p.lifetime = 0.2
 	p.one_shot = true
 	p.process_material = create_impact_material()
-	# choose impact texture without ternary
 	if bullet_type == BulletType.FIREBALL:
 		p.texture = fireball_particle_texture
 	else:
@@ -171,7 +176,6 @@ func create_impact_material() -> ParticleProcessMaterial:
 	m.initial_velocity_max = 120.0
 	m.scale_min = 0.1
 	m.scale_max = 0.3
-	# choose color without ternary
 	if bullet_type == BulletType.FIREBALL:
 		m.color = fireball_color
 	else:

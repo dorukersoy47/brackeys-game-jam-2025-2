@@ -1,0 +1,67 @@
+[gd_scene load_steps=2 format=3 uid="uid://da05xiitdoldb"]
+
+[ext_resource type="Script" uid="uid://b4u4vngugvl2l" path="res://scripts/ui/ShopOverlay.gd" id="1_fyyb4"]
+
+[node name="ShopOverlay" type="CanvasLayer"]
+layer = 90
+script = ExtResource("1_fyyb4")
+
+[node name="Root" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="Dim" type="ColorRect" parent="Root"]
+layout_mode = 0
+offset_left = 487.0
+offset_top = 121.0
+offset_right = 527.0
+offset_bottom = 161.0
+scale = Vector2(9.90667, 9.68196)
+color = Color(0.38, 0.169, 0.024, 0.956)
+
+[node name="Center" type="CenterContainer" parent="Root"]
+layout_mode = 0
+offset_left = 556.0
+offset_top = 182.0
+offset_right = 596.0
+offset_bottom = 222.0
+scale = Vector2(1.29912, 1.37055)
+
+[node name="Panel" type="Panel" parent="Root/Center"]
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="Root/Center/Panel"]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="Title" type="Label" parent="Root/Center/Panel/VBox"]
+layout_mode = 2
+text = "SHOP"
+
+[node name="CloseButton" type="Button" parent="Root/Center/Panel/VBox"]
+layout_mode = 2
+text = "Close"
+
+[node name="Bar" type="HBoxContainer" parent="Root/Center/Panel/VBox"]
+layout_mode = 2
+
+[node name="CoinsLabel" type="Label" parent="Root/Center/Panel/VBox/Bar"]
+layout_mode = 2
+
+[node name="Tabs" type="HBoxContainer" parent="Root/Center/Panel/VBox/Bar"]
+layout_mode = 2
+
+[node name="Upgrades" type="Button" parent="Root/Center/Panel/VBox/Bar/Tabs"]
+layout_mode = 2
+
+[node name="Items" type="Button" parent="Root/Center/Panel/VBox/Bar/Tabs"]
+layout_mode = 2
+
+[node name="Scroll" type="ScrollContainer" parent="Root/Center/Panel/VBox"]
+layout_mode = 2
+
+[node name="ItemsContainer" type="VBoxContainer" parent="Root/Center/Panel/VBox/Scroll"]
+layout_mode = 2
