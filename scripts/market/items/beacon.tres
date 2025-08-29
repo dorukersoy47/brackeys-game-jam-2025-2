@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=3 format=3 uid="uid://brd317w5fyf81"]
+
+[ext_resource type="PackedScene" uid="uid://do6fhvx8fbfpb" path="res://scripts/market/effects/BeaconEffect.tscn" id="1_jfxsr"]
+[ext_resource type="Script" uid="uid://bv81fv5mgdnv5" path="res://scripts/market/ItemDef.gd" id="1_wl6qk"]
+
+[resource]
+script = ExtResource("1_wl6qk")
+id = &"beacon"
+display_name = "Beacon"
+desc = "Force a shrine to spawn within 5 seconds"
+cost = 160
+kind = 0
+stackable = true
+max_stack = 3
+rarity = &"rare"
+effect_scene = ExtResource("1_jfxsr")

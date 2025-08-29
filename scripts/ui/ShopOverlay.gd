@@ -14,6 +14,8 @@ signal closed
 @export var list_container_path: NodePath
 
 @onready var save_node: Node = get_node("/root/Save")
+@onready var market_db: MarketDB = get_node("/root/DB")
+@onready var market_controller: MarketController = get_node("/root/MrktController")
 
 var dim: ColorRect
 var panel: Panel
@@ -23,132 +25,131 @@ var btn_tab_it: Button
 var lbl_coins: Label
 var list_container: VBoxContainer
 
-var shop_items: Array = [
-	{"id":"health_upgrade","name":"Health Upgrade","description":"Increase max HP by 1","cost":100,"max_level":5,"upgrade_key":"hp"},
-	{"id":"speed_upgrade","name":"Speed Boost","description":"Increase movement speed by 10%","cost":80,"max_level":3,"upgrade_key":"move"},
-	{"id":"dash_upgrade","name":"Dash Enhancement","description":"Increase dash invulnerability frames","cost":120,"max_level":3,"upgrade_key":"dash_iframes"},
-	{"id":"coin_magnet","name":"Coin Magnet","description":"Increase coin collection range","cost":150,"max_level":2,"upgrade_key":"coin_rate"},
-	{"id":"fast_cashout","name":"Fast Cashout","description":"Reduce cashout channeling time","cost":90,"max_level":3,"upgrade_key":"cashout"},
-	{"id":"insurance","name":"Death Insurance","description":"Salvage 5% of coins on death","cost":200,"max_level":1,"upgrade_key":"insurance"}
-]
+# Loadout management
+var loadout_container: HBoxContainer
+var save_loadout_button: Button
 
 func _ready() -> void:
-	# HIGHER than StartOverlay
-	layer = max(layer, 200)
-	process_mode = Node.PROCESS_MODE_ALWAYS
-	visible = true
+		# HIGHER than StartOverlay
+		layer = max(layer, 200)
+		process_mode = Node.PROCESS_MODE_ALWAYS
+		visible = true
 
-	_resolve_refs()
-	_setup_modal_behavior()
-	_connect_buttons()
-	_update_coins_label()
-	_show_upgrades_tab()
+		_resolve_refs()
+		_setup_modal_behavior()
+		_connect_buttons()
+		_update_coins_label()
+		_setup_loadout_ui()
+		_show_upgrades_tab()
 
-	# Only pause if opened from gameplay; Start menu will set pause_game=false
-	if pause_game:
-		get_tree().paused = true
+		# Connect market controller signals
+		market_controller.purchase_ok.connect(_on_purchase_ok)
+		market_controller.purchase_denied.connect(_on_purchase_denied)
+
+		# Only pause if opened from gameplay; Start menu will set pause_game=false
+		if pause_game:
+				get_tree().paused = true
 
 func _exit_tree() -> void:
-	if pause_game:
-		get_tree().paused = false
+		if pause_game:
+				get_tree().paused = false
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("ui_cancel"):
-		_on_close()
+		if event.is_action_pressed("ui_cancel"):
+				_on_close()
 
 # ---------- Setup ----------
 
 func _resolve_refs() -> void:
-	dim = _get_node_safe(dim_path, "Dim") as ColorRect
-	panel = _get_node_safe(panel_path, "Panel") as Panel
-	btn_close = _get_node_safe(close_button_path, "CloseButton") as Button
-	btn_tab_up = _get_node_safe(tab_upgrades_path, "TabUpgrades") as Button
-	btn_tab_it = _get_node_safe(tab_items_path, "TabItems") as Button
-	lbl_coins = _get_node_safe(coins_label_path, "CoinsLabel") as Label
-	list_container = _get_node_safe(list_container_path, "ItemsList") as VBoxContainer
+		dim = _get_node_safe(dim_path, "Dim") as ColorRect
+		panel = _get_node_safe(panel_path, "Panel") as Panel
+		btn_close = _get_node_safe(close_button_path, "CloseButton") as Button
+		btn_tab_up = _get_node_safe(tab_upgrades_path, "TabUpgrades") as Button
+		btn_tab_it = _get_node_safe(tab_items_path, "TabItems") as Button
+		lbl_coins = _get_node_safe(coins_label_path, "CoinsLabel") as Label
+		list_container = _get_node_safe(list_container_path, "ItemsList") as VBoxContainer
 
 func _get_node_safe(path: NodePath, fallback: String) -> Node:
-	if path != NodePath("") and has_node(path):
-		return get_node(path)
-	return find_child(fallback, true, false)
+		if path != NodePath("") and has_node(path):
+				return get_node(path)
+		return find_child(fallback, true, false)
 
 func _setup_modal_behavior() -> void:
-	# Dim should block clicks to the StartOverlay behind
-	if dim:
-		dim.mouse_filter = Control.MOUSE_FILTER_STOP
-		dim.z_index = 0
-		# ensure full screen coverage
-		dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	if panel:
-		panel.mouse_filter = Control.MOUSE_FILTER_STOP
-		panel.z_index = 1
+		# Dim should block clicks to the StartOverlay behind
+		if dim:
+				dim.mouse_filter = Control.MOUSE_FILTER_STOP
+				dim.z_index = 0
+				# ensure full screen coverage
+				dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+		if panel:
+				panel.mouse_filter = Control.MOUSE_FILTER_STOP
+				panel.z_index = 1
 
 func _connect_buttons() -> void:
-	if btn_close and not btn_close.pressed.is_connected(_on_close):
-		btn_close.pressed.connect(_on_close)
-	if btn_tab_up and not btn_tab_up.pressed.is_connected(_show_upgrades_tab):
-		btn_tab_up.pressed.connect(_show_upgrades_tab)
-	if btn_tab_it and not btn_tab_it.pressed.is_connected(_show_items_tab):
-		btn_tab_it.pressed.connect(_show_items_tab)
+		if btn_close and not btn_close.pressed.is_connected(_on_close):
+				btn_close.pressed.connect(_on_close)
+		if btn_tab_up and not btn_tab_up.pressed.is_connected(_show_upgrades_tab):
+				btn_tab_up.pressed.connect(_show_upgrades_tab)
+		if btn_tab_it and not btn_tab_it.pressed.is_connected(_show_items_tab):
+				btn_tab_it.pressed.connect(_show_items_tab)
 
 # ---------- Close ----------
 
 func _on_close() -> void:
-	emit_signal("closed")
-	queue_free()
+		emit_signal("closed")
+		queue_free()
 
 # ---------- Tabs / UI ----------
 
 func _show_upgrades_tab() -> void:
-	_clear_list()
-	_populate_upgrades()
+		_clear_list()
+		_populate_upgrades()
 
 func _show_items_tab() -> void:
-	_clear_list()
-	_populate_items_placeholder()
+		_clear_list()
+		_populate_items()
 
 func _update_coins_label() -> void:
-	if lbl_coins and typeof(save_node) == TYPE_OBJECT:
-		var coins := int((save_node.get("data") as Dictionary).get("coins_banked", 0))
-		lbl_coins.text = "Coins: %d" % coins
+		if lbl_coins and typeof(save_node) == TYPE_OBJECT:
+				var coins := int((save_node.get("data") as Dictionary).get("coins_banked", 0))
+				lbl_coins.text = "Coins: %d" % coins
 
 func _clear_list() -> void:
-	if list_container:
-		for c in list_container.get_children():
-			c.queue_free()
+		if list_container:
+				for c in list_container.get_children():
+						c.queue_free()
 
 func _populate_upgrades() -> void:
-	if list_container == null or typeof(save_node) != TYPE_OBJECT:
+	if list_container == null:
 		return
-	var data := save_node.get("data") as Dictionary
-	var ups := data.get("upgrades", {}) as Dictionary
-	var coins := int(data.get("coins_banked", 0))
 
-	for item_dict in shop_items:
-		var item := item_dict as Dictionary
-		var level := int(ups.get(item.get("upgrade_key"), 0))
-		var max_level := int(item.get("max_level"))
-		var cost := int(item.get("cost"))
-		var can_upgrade := level < max_level
-		var can_afford := coins >= cost
+	var coins: int = int(save_node.data.coins_banked)
+	var upgrades: Array = market_db.get_all_upgrades()  # ideally Array[UpgradeDef]
+
+	for upgrade_def in upgrades:
+		var level: int = int(save_node.get_upgrade(upgrade_def.stat_key))
+		var max_level: int = int(upgrade_def.max_level)
+		var cost: int = int(market_controller.get_upgrade_price(upgrade_def))
+		var can_upgrade: bool = level < max_level
+		var can_afford: bool = coins >= cost
 
 		var row := HBoxContainer.new()
 		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 		var name_lbl := Label.new()
 		name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		name_lbl.text = "%s (Lv %d/%d)" % [item.get("name"), level, max_level]
+		name_lbl.text = "%s (Lv %d/%d)" % [upgrade_def.display_name, level, max_level]
 		row.add_child(name_lbl)
 
 		var desc_lbl := Label.new()
-		desc_lbl.text = str(item.get("description"))
+		desc_lbl.text = upgrade_def.desc
 		desc_lbl.add_theme_color_override("font_color", Color.GRAY)
 		row.add_child(desc_lbl)
 
 		var buy_btn := Button.new()
 		if can_upgrade and can_afford:
 			buy_btn.text = "Buy %d" % cost
-			buy_btn.pressed.connect(func(): _buy_upgrade(item))
+			buy_btn.pressed.connect(func(): market_controller.buy_upgrade(upgrade_def))
 		elif not can_upgrade:
 			buy_btn.text = "MAX"
 			buy_btn.disabled = true
@@ -159,34 +160,117 @@ func _populate_upgrades() -> void:
 
 		list_container.add_child(row)
 
-func _populate_items_placeholder() -> void:
+func _populate_items() -> void:
 	if list_container == null:
 		return
-	var info := Label.new()
-	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	info.text = "Consumables coming soon!"
-	info.add_theme_font_size_override("font_size", 18)
-	list_container.add_child(info)
 
-func _buy_upgrade(item: Dictionary) -> void:
-	if typeof(save_node) != TYPE_OBJECT:
-		return
-	var data := save_node.get("data") as Dictionary
-	var coins := int(data.get("coins_banked", 0))
-	var cost := int(item.get("cost"))
+	var coins: int = int(save_node.data.coins_banked)
+	var items: Array = market_db.get_all_items()  # ideally Array[ItemDef]
 
-	if coins < cost:
-		return
+	for item_def in items:
+		var owned_count: int = int(save_node.get_item_count(item_def.id))
+		var cost: int = int(item_def.cost)
+		var can_afford: bool = coins >= cost
+		var can_buy_more: bool = owned_count < item_def.max_stack * 5
 
-	data["coins_banked"] = coins - cost
+		var row := HBoxContainer.new()
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
-	var ups := data.get("upgrades", {}) as Dictionary
-	var key := str(item.get("upgrade_key"))
-	ups[key] = int(ups.get(key, 0)) + 1
-	data["upgrades"] = ups
+		var name_lbl := Label.new()
+		name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		name_lbl.text = "%s (%d owned)" % [item_def.display_name, owned_count]
+		row.add_child(name_lbl)
 
-	if save_node.has_method("save_game"):
-		save_node.call("save_game")
+		var desc_lbl := Label.new()
+		desc_lbl.text = item_def.desc
+		desc_lbl.add_theme_color_override("font_color", Color.GRAY)
+		row.add_child(desc_lbl)
 
-	_update_coins_label()
-	_show_upgrades_tab()
+		var buy_btn := Button.new()
+		if can_afford and can_buy_more:
+			buy_btn.text = "Buy %d" % cost
+			buy_btn.pressed.connect(func(): market_controller.buy_item_to_stash(item_def))
+		elif not can_buy_more:
+			buy_btn.text = "MAX STASH"
+			buy_btn.disabled = true
+		else:
+			buy_btn.text = "Can't Afford"
+			buy_btn.disabled = true
+		row.add_child(buy_btn)
+
+		if owned_count > 0:
+			var equip_btn := Button.new()
+			var loadout: Array = save_node.get_loadout()
+			if item_def.id in loadout:
+				equip_btn.text = "Unequip"
+				equip_btn.pressed.connect(func(): _unequip_item(item_def.id))
+			else:
+				equip_btn.text = "Equip"
+				equip_btn.pressed.connect(func(): _equip_item(item_def.id))
+			row.add_child(equip_btn)
+
+		list_container.add_child(row)
+
+	# Loadout section
+	var loadout_header := Label.new()
+	loadout_header.text = "Loadout (3 slots max):"
+	loadout_header.add_theme_font_size_override("font_size", 16)
+	loadout_header.add_theme_color_override("font_color", Color.YELLOW)
+	list_container.add_child(loadout_header)
+
+	var loadout_row := HBoxContainer.new()
+	loadout_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+	var loadout: Array = save_node.get_loadout()
+	for i in range(3):
+		var slot_btn := Button.new()
+		slot_btn.custom_minimum_size = Vector2(100, 40)
+		if i < loadout.size():
+			var def := market_db.get_item(loadout[i])
+			if def:
+				slot_btn.text = def.display_name
+				slot_btn.pressed.connect(func(): _unequip_item(loadout[i]))
+			else:
+				slot_btn.text = "Empty"
+				slot_btn.disabled = true
+		else:
+			slot_btn.text = "Empty"
+			slot_btn.disabled = true
+		loadout_row.add_child(slot_btn)
+
+	list_container.add_child(loadout_row)
+
+# Helper methods for item management
+func _equip_item(item_id: StringName) -> void:
+		var loadout = save_node.get_loadout()
+		if loadout.size() >= 3:
+				return  # Max slots
+		
+		if item_id not in loadout and save_node.get_item_count(item_id) > 0:
+				loadout.append(item_id)
+				save_node.set_loadout(loadout)
+				_show_items_tab()  # Refresh
+
+func _unequip_item(item_id: StringName) -> void:
+		var loadout = save_node.get_loadout()
+		var index = loadout.find(item_id)
+		if index != -1:
+				loadout.remove_at(index)
+				save_node.set_loadout(loadout)
+				_show_items_tab()  # Refresh
+
+func _setup_loadout_ui() -> void:
+		# This could be expanded to show loadout in a more prominent way
+		pass
+
+func _on_purchase_ok(kind: StringName, id: StringName) -> void:
+		_update_coins_label()
+		# Refresh current tab
+		if btn_tab_up and btn_tab_up.button_pressed:
+				_show_upgrades_tab()
+		elif btn_tab_it and btn_tab_it.button_pressed:
+				_show_items_tab()
+
+func _on_purchase_denied(reason: String) -> void:
+		# Could show a toast or notification here
+		print("Purchase denied: ", reason)

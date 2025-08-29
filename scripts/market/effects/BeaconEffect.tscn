@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://do6fhvx8fbfpb"]
+
+[ext_resource type="Script" uid="uid://bbqts4viewvjb" path="res://scripts/market/effects/BeaconEffect.gd" id="1_tmb3l"]
+
+[node name="BeaconEffect" type="Node"]
+script = ExtResource("1_tmb3l")

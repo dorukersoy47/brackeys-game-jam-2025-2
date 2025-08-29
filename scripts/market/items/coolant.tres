@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=3 format=3 uid="uid://bnaccyb0y2nb0"]
+
+[ext_resource type="PackedScene" uid="uid://dehk67xhnoux1" path="res://scripts/market/effects/CoolantEffect.tscn" id="1_0ffcd"]
+[ext_resource type="Script" uid="uid://bv81fv5mgdnv5" path="res://scripts/market/ItemDef.gd" id="1_ej3ed"]
+
+[resource]
+script = ExtResource("1_ej3ed")
+id = &"coolant"
+display_name = "Coolant"
+desc = "Reduce heat by 1 tier and slow heat growth for 10s"
+cost = 140
+kind = 0
+stackable = true
+max_stack = 3
+rarity = &"uncommon"
+effect_scene = ExtResource("1_0ffcd")

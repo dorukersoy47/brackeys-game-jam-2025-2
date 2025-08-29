@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=3 format=3 uid="uid://b32u4joqi5g7c"]
+
+[ext_resource type="PackedScene" uid="uid://bwyqg1gt4omg5" path="res://scripts/market/effects/HarvesterEffect.tscn" id="1_5w71v"]
+[ext_resource type="Script" uid="uid://bv81fv5mgdnv5" path="res://scripts/market/ItemDef.gd" id="1_abslq"]
+
+[resource]
+script = ExtResource("1_abslq")
+id = &"harvester"
+display_name = "Harvester"
+desc = "Double coin collection rate for 8 seconds"
+cost = 100
+kind = 0
+stackable = true
+max_stack = 3
+rarity = &"common"
+effect_scene = ExtResource("1_5w71v")

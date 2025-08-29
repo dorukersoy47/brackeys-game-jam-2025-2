@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://dx6mpq81j4tee"]
+
+[ext_resource type="Script" uid="uid://b0isuloiat8gb" path="res://scripts/market/effects/ShieldEffect.gd" id="1_1wb3x"]
+
+[node name="ShieldEffect" type="Node"]
+script = ExtResource("1_1wb3x")

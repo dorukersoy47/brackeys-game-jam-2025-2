@@ -67,7 +67,6 @@ func _on_start_game() -> void:
 func _on_open_shop() -> void:
 	# Avoid opening more than one
 	if _shop_ref and is_instance_valid(_shop_ref):
-		# Bring it to front by bumping layer if needed
 		if _shop_ref is CanvasLayer:
 			var cl := _shop_ref as CanvasLayer
 			if cl.layer <= layer:
@@ -81,19 +80,26 @@ func _on_open_shop() -> void:
 	if overlay == null:
 		return
 
-	# IMPORTANT: add to root and put it *above* StartOverlay
+	# Put it above StartOverlay
 	overlay.layer = max(layer + 1, 200)
 
-	# If your ShopOverlay has a 'pause_game' export, disable pause in menu
-	if overlay.has_method("set"):
-		overlay.set("pause_game", false)
+	# If it’s actually your ShopOverlay, set pause_game safely
+	if overlay is ShopOverlay:
+		(overlay as ShopOverlay).pause_game = false
+	else:
+		# Fallback if you kept it untyped
+		if overlay.has_method("set"):
+			overlay.set("pause_game", false)
 
 	get_tree().root.add_child(overlay)
 	_shop_ref = overlay
 
-	# If ShopOverlay has 'closed' signal, listen so we can refocus
-	if "closed" in overlay.get_signal_list():
+	# ✅ Correct way to check/connect a signal
+	if overlay.has_signal("closed"):
 		overlay.connect("closed", Callable(self, "_on_shop_closed"))
+
+	# Keep reference tidy if user closes via other means
+	overlay.tree_exited.connect(func(): _shop_ref = null)
 
 func _on_shop_closed() -> void:
 	_shop_ref = null

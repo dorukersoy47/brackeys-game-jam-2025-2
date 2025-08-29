@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="UpgradeDef" load_steps=2 format=3 uid="uid://dpkkhmu0tkd3m"]
+
+[ext_resource type="Script" uid="uid://2edeu5nednu3" path="res://scripts/market/UpgradeDef.gd" id="1_d7kv3"]
+
+[resource]
+script = ExtResource("1_d7kv3")
+id = &"cashout"
+display_name = "Fast Cashout"
+desc = "Reduce cashout channeling time"
+base_cost = 90
+max_level = 3
+curve = &"linear"
+stat_key = &"cashout"
+per_level_value = 0.2

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="UpgradeDef" load_steps=2 format=3 uid="uid://bu3xxinnelp46"]
+
+[ext_resource type="Script" uid="uid://2edeu5nednu3" path="res://scripts/market/UpgradeDef.gd" id="1_qfsmo"]
+
+[resource]
+script = ExtResource("1_qfsmo")
+id = &"hp"
+display_name = "Health Upgrade"
+desc = "Increase max HP by 1"
+base_cost = 100
+max_level = 5
+curve = &"linear"
+stat_key = &"hp"
+per_level_value = 1.0

@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=3 format=3 uid="uid://fqpfyainqub2"]
+
+[ext_resource type="Script" uid="uid://bv81fv5mgdnv5" path="res://scripts/market/ItemDef.gd" id="1_3vas7"]
+[ext_resource type="PackedScene" uid="uid://dx6mpq81j4tee" path="res://scripts/market/effects/ShieldEffect.tscn" id="1_hxidw"]
+
+[resource]
+script = ExtResource("1_3vas7")
+id = &"shield"
+display_name = "Shield"
+desc = "Grants one temporary guard that blocks next damage"
+cost = 120
+kind = 0
+stackable = true
+max_stack = 3
+rarity = &"common"
+effect_scene = ExtResource("1_hxidw")

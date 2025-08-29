@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemCatalog" load_steps=9 format=3 uid="uid://epkovxfouj7"]
+
+[ext_resource type="Script" uid="uid://bv81fv5mgdnv5" path="res://scripts/market/ItemDef.gd" id="1_hiiu2"]
+[ext_resource type="Script" uid="uid://bb0onb150l244" path="res://scripts/market/ItemCatalog.gd" id="2_hteoy"]
+[ext_resource type="Resource" uid="uid://dk3trahq4r257" path="res://scripts/market/items/bomb.tres" id="2_y0a0f"]
+[ext_resource type="Resource" uid="uid://fqpfyainqub2" path="res://scripts/market/items/shield.tres" id="3_4gnk6"]
+[ext_resource type="Resource" uid="uid://bnaccyb0y2nb0" path="res://scripts/market/items/coolant.tres" id="4_f6pqn"]
+[ext_resource type="Resource" uid="uid://b32u4joqi5g7c" path="res://scripts/market/items/harvester.tres" id="5_0wb1v"]
+[ext_resource type="Resource" uid="uid://dv54ylob4jrfl" path="res://scripts/market/items/anchor.tres" id="6_he7rb"]
+[ext_resource type="Resource" uid="uid://brd317w5fyf81" path="res://scripts/market/items/beacon.tres" id="7_24o37"]
+
+[resource]
+script = ExtResource("2_hteoy")
+items = Array[ExtResource("1_hiiu2")]([ExtResource("2_y0a0f"), ExtResource("3_4gnk6"), ExtResource("4_f6pqn"), ExtResource("5_0wb1v"), ExtResource("6_he7rb"), ExtResource("7_24o37")])
+metadata/_custom_type_script = "uid://bb0onb150l244"

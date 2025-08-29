@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://bwyqg1gt4omg5"]
+
+[ext_resource type="Script" uid="uid://d26nrdpx5fwru" path="res://scripts/market/effects/HarvesterEffect.gd" id="1_nrc6g"]
+
+[node name="HarvesterEffect" type="Node"]
+script = ExtResource("1_nrc6g")

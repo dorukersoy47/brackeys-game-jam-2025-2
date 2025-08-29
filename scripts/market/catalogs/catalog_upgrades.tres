@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="UpgradeCatalog" load_steps=9 format=3 uid="uid://51ix8og75gou"]
+
+[ext_resource type="Script" uid="uid://dbraxgxmg0jpt" path="res://scripts/market/UpgradeCatalog.gd" id="1_krqfb"]
+[ext_resource type="Script" uid="uid://2edeu5nednu3" path="res://scripts/market/UpgradeDef.gd" id="2_ms68y"]
+[ext_resource type="Resource" uid="uid://bu3xxinnelp46" path="res://scripts/market/upgrades/hp.tres" id="3_7h5sh"]
+[ext_resource type="Resource" uid="uid://qtkefvwja1v2" path="res://scripts/market/upgrades/move.tres" id="4_35nlc"]
+[ext_resource type="Resource" uid="uid://dpmvc0ss2063a" path="res://scripts/market/upgrades/dash_iframes.tres" id="5_ntgqh"]
+[ext_resource type="Resource" uid="uid://c7ayxqmu4nfl0" path="res://scripts/market/upgrades/coin_rate.tres" id="6_bh5ji"]
+[ext_resource type="Resource" uid="uid://dpkkhmu0tkd3m" path="res://scripts/market/upgrades/cashout.tres" id="7_saefv"]
+[ext_resource type="Resource" uid="uid://cf1traf1uryvv" path="res://scripts/market/upgrades/insurance.tres" id="8_cvktb"]
+
+[resource]
+script = ExtResource("1_krqfb")
+upgrades = Array[ExtResource("2_ms68y")]([ExtResource("3_7h5sh"), ExtResource("4_35nlc"), ExtResource("5_ntgqh"), ExtResource("6_bh5ji"), ExtResource("7_saefv"), ExtResource("8_cvktb")])
+metadata/_custom_type_script = "uid://dbraxgxmg0jpt"

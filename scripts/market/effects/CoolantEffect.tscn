@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://dehk67xhnoux1"]
+
+[ext_resource type="Script" uid="uid://ber7syyu6lwqx" path="res://scripts/market/effects/CoolantEffect.gd" id="1_m656a"]
+
+[node name="CoolantEffect" type="Node"]
+script = ExtResource("1_m656a")

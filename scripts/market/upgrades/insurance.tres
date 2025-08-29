@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="UpgradeDef" load_steps=2 format=3 uid="uid://cf1traf1uryvv"]
+
+[ext_resource type="Script" uid="uid://2edeu5nednu3" path="res://scripts/market/UpgradeDef.gd" id="1_51nru"]
+
+[resource]
+script = ExtResource("1_51nru")
+id = &"insurance"
+display_name = "Death Insurance"
+desc = "Salvage 5% of coins on death"
+base_cost = 200
+max_level = 1
+curve = &"linear"
+stat_key = &"insurance"
+per_level_value = 1.0

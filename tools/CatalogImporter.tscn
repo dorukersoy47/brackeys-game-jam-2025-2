@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://cqgaqoxp0u5lq"]
+
+[ext_resource type="Script" uid="uid://calvlcphkik7e" path="res://tools/CatalogImporter.gd" id="1_ldk7j"]
+
+[node name="CatalogImporter" type="Node"]
+script = ExtResource("1_ldk7j")

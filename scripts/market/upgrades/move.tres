@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="UpgradeDef" load_steps=2 format=3 uid="uid://qtkefvwja1v2"]
+
+[ext_resource type="Script" uid="uid://2edeu5nednu3" path="res://scripts/market/UpgradeDef.gd" id="1_ngpox"]
+
+[resource]
+script = ExtResource("1_ngpox")
+id = &"move"
+display_name = "Speed Boost"
+desc = "Increase movement speed by 10%"
+base_cost = 80
+max_level = 3
+curve = &"linear"
+stat_key = &"move"
+per_level_value = 0.1

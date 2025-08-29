@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="UpgradeDef" load_steps=2 format=3 uid="uid://c7ayxqmu4nfl0"]
+
+[ext_resource type="Script" uid="uid://2edeu5nednu3" path="res://scripts/market/UpgradeDef.gd" id="1_wn0aa"]
+
+[resource]
+script = ExtResource("1_wn0aa")
+id = &"coin_rate"
+display_name = "Coin Magnet"
+desc = "Increase coin collection range"
+base_cost = 150
+max_level = 2
+curve = &"linear"
+stat_key = &"coin_rate"
+per_level_value = 0.2
