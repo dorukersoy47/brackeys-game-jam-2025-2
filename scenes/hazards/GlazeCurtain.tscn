@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3 uid="uid://dmpeuribnc2x7"]
+
+[ext_resource type="Script" uid="uid://of5jm1vkko6d" path="res://scripts/gameplay/emitters/GlazeCurtain.gd" id="1_26e5n"]
+
+[node name="GlazeCurtain" type="Node2D"]
+script = ExtResource("1_26e5n")
+
+[connection signal="tree_entered" from="." to="." method="_on_tree_entered"]

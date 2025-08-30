@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3 uid="uid://c6k42frb8hoj4"]
+
+[ext_resource type="Script" uid="uid://b3ma0hcft0wls" path="res://scripts/gameplay/emitters/MixerArm.gd" id="1_26e5n"]
+
+[node name="MixerArm" type="Node2D"]
+script = ExtResource("1_26e5n")
+
+[connection signal="tree_entered" from="." to="." method="_on_tree_entered"]
