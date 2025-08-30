@@ -1,76 +1,241 @@
-[gd_scene load_steps=2 format=3 uid="uid://da05xiitdoldb"]
+[gd_scene load_steps=6 format=3 uid="uid://da05xiitdoldb"]
 
 [ext_resource type="Script" uid="uid://b4u4vngugvl2l" path="res://scripts/ui/ShopOverlay.gd" id="1_fyyb4"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_2"]
+bg_color = Color(0.15, 0.15, 0.2, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_5"]
+bg_color = Color(0.8, 0.2, 0.2, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_4"]
+content_margin_left = 16.0
+content_margin_top = 8.0
+content_margin_right = 16.0
+content_margin_bottom = 8.0
+bg_color = Color(0.2, 0.6, 0.8, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3"]
+content_margin_left = 16.0
+content_margin_top = 8.0
+content_margin_right = 16.0
+content_margin_bottom = 8.0
+bg_color = Color(0.25, 0.25, 0.3, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
 
 [node name="ShopOverlay" type="CanvasLayer"]
 layer = 90
 script = ExtResource("1_fyyb4")
 dim_path = NodePath("Root/Dim")
 panel_path = NodePath("Root/Center/Panel")
-close_button_path = NodePath("Root/Center/Panel/VBox/CloseButton")
-tab_upgrades_path = NodePath("Root/Center/Panel/VBox/Bar/Tabs/Upgrades")
-tab_items_path = NodePath("Root/Center/Panel/VBox/Bar/Tabs/Items")
-coins_label_path = NodePath("Root/Center/Panel/VBox/Bar/CoinsLabel")
-list_container_path = NodePath("Root/Center/Panel/VBox/Scroll/ItemsContainer")
+close_button_path = NodePath("Root/Center/Panel/VBoxContainer/Header/CloseButton")
+tab_upgrades_path = NodePath("Root/Center/Panel/VBoxContainer/TabBar/UpgradesTab")
+tab_items_path = NodePath("Root/Center/Panel/VBoxContainer/TabBar/ItemsTab")
+coins_label_path = NodePath("Root/Center/Panel/VBoxContainer/Header/CoinsContainer/CoinsLabel")
+list_container_path = NodePath("Root/Center/Panel/VBoxContainer/Content/ScrollContainer/ItemsContainer")
 
 [node name="Root" type="Control" parent="."]
 layout_mode = 3
-anchors_preset = 0
-offset_right = 40.0
-offset_bottom = 40.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 
 [node name="Dim" type="ColorRect" parent="Root"]
-layout_mode = 0
-offset_left = 487.0
-offset_top = 121.0
-offset_right = 527.0
-offset_bottom = 161.0
-scale = Vector2(9.90667, 9.68196)
-color = Color(0.38, 0.169, 0.024, 0.956)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.05, 0.05, 0.1, 0.85)
 
 [node name="Center" type="CenterContainer" parent="Root"]
-layout_mode = 0
-offset_left = 556.0
-offset_top = 182.0
-offset_right = 596.0
-offset_bottom = 222.0
-scale = Vector2(1.29912, 1.37055)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 
 [node name="Panel" type="Panel" parent="Root/Center"]
+custom_minimum_size = Vector2(800, 600)
 layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_2")
 
-[node name="VBox" type="VBoxContainer" parent="Root/Center/Panel"]
-layout_mode = 0
-offset_right = 40.0
-offset_bottom = 40.0
+[node name="VBoxContainer" type="VBoxContainer" parent="Root/Center/Panel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 0
 
-[node name="Title" type="Label" parent="Root/Center/Panel/VBox"]
+[node name="Header" type="HBoxContainer" parent="Root/Center/Panel/VBoxContainer"]
 layout_mode = 2
-text = "SHOP"
+size_flags_vertical = 0
+theme_override_constants/separation = 20
 
-[node name="CloseButton" type="Button" parent="Root/Center/Panel/VBox"]
+[node name="Title" type="Label" parent="Root/Center/Panel/VBoxContainer/Header"]
 layout_mode = 2
-text = "Close"
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 0.9, 0.7, 1)
+theme_override_font_sizes/font_size = 32
+text = "MARKET"
+horizontal_alignment = 1
 
-[node name="Bar" type="HBoxContainer" parent="Root/Center/Panel/VBox"]
+[node name="CoinsContainer" type="HBoxContainer" parent="Root/Center/Panel/VBoxContainer/Header"]
 layout_mode = 2
+theme_override_constants/separation = 8
 
-[node name="CoinsLabel" type="Label" parent="Root/Center/Panel/VBox/Bar"]
+[node name="CoinIcon" type="Label" parent="Root/Center/Panel/VBoxContainer/Header/CoinsContainer"]
 layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "🪙"
 
-[node name="Tabs" type="HBoxContainer" parent="Root/Center/Panel/VBox/Bar"]
+[node name="CoinsLabel" type="Label" parent="Root/Center/Panel/VBoxContainer/Header/CoinsContainer"]
 layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.9, 0.3, 1)
+theme_override_font_sizes/font_size = 20
+text = "0"
 
-[node name="Upgrades" type="Button" parent="Root/Center/Panel/VBox/Bar/Tabs"]
+[node name="CloseButton" type="Button" parent="Root/Center/Panel/VBoxContainer/Header"]
+custom_minimum_size = Vector2(40, 40)
 layout_mode = 2
-text = "Upgrades"
+theme_override_font_sizes/font_size = 20
+theme_override_styles/hover = SubResource("StyleBoxFlat_5")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_5")
+theme_override_styles/normal = SubResource("StyleBoxFlat_5")
+text = "✕"
 
-[node name="Items" type="Button" parent="Root/Center/Panel/VBox/Bar/Tabs"]
+[node name="TabBar" type="HBoxContainer" parent="Root/Center/Panel/VBoxContainer"]
 layout_mode = 2
-text = "Items"
+theme_override_constants/separation = 0
 
-[node name="Scroll" type="ScrollContainer" parent="Root/Center/Panel/VBox"]
+[node name="UpgradesTab" type="Button" parent="Root/Center/Panel/VBoxContainer/TabBar"]
+custom_minimum_size = Vector2(120, 40)
 layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+theme_override_styles/hover = SubResource("StyleBoxFlat_4")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_4")
+theme_override_styles/normal = SubResource("StyleBoxFlat_3")
+text = "UPGRADES"
 
-[node name="ItemsContainer" type="VBoxContainer" parent="Root/Center/Panel/VBox/Scroll"]
+[node name="ItemsTab" type="Button" parent="Root/Center/Panel/VBoxContainer/TabBar"]
+custom_minimum_size = Vector2(120, 40)
 layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+theme_override_styles/hover = SubResource("StyleBoxFlat_4")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_4")
+theme_override_styles/normal = SubResource("StyleBoxFlat_3")
+text = "ITEMS"
+
+[node name="Content" type="Panel" parent="Root/Center/Panel/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_2")
+
+[node name="ScrollContainer" type="ScrollContainer" parent="Root/Center/Panel/VBoxContainer/Content"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ItemsContainer" type="VBoxContainer" parent="Root/Center/Panel/VBoxContainer/Content/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 16
+
+[node name="HSeparator" type="HSeparator" parent="Root/Center/Panel/VBoxContainer"]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+theme_override_styles/separator = SubResource("StyleBoxFlat_3")
+
+[node name="LoadoutSection" type="VBoxContainer" parent="Root/Center/Panel/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="LoadoutHeader" type="Label" parent="Root/Center/Panel/VBoxContainer/LoadoutSection"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.9, 0.7, 1)
+theme_override_font_sizes/font_size = 14
+text = "ACTIVE LOADOUT"
+horizontal_alignment = 1
+
+[node name="LoadoutSlots" type="HBoxContainer" parent="Root/Center/Panel/VBoxContainer/LoadoutSection"]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 12
+
+[node name="Slot1" type="Panel" parent="Root/Center/Panel/VBoxContainer/LoadoutSection/LoadoutSlots"]
+custom_minimum_size = Vector2(120, 60)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_3")
+
+[node name="SlotLabel1" type="Label" parent="Root/Center/Panel/VBoxContainer/LoadoutSection/LoadoutSlots/Slot1"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+text = "EMPTY"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Slot2" type="Panel" parent="Root/Center/Panel/VBoxContainer/LoadoutSection/LoadoutSlots"]
+custom_minimum_size = Vector2(120, 60)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_3")
+
+[node name="SlotLabel2" type="Label" parent="Root/Center/Panel/VBoxContainer/LoadoutSection/LoadoutSlots/Slot2"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+text = "EMPTY"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Slot3" type="Panel" parent="Root/Center/Panel/VBoxContainer/LoadoutSection/LoadoutSlots"]
+custom_minimum_size = Vector2(120, 60)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_3")
+
+[node name="SlotLabel3" type="Label" parent="Root/Center/Panel/VBoxContainer/LoadoutSection/LoadoutSlots/Slot3"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+text = "EMPTY"
+horizontal_alignment = 1
+vertical_alignment = 1
