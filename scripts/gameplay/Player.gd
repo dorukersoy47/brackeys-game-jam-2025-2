@@ -5,8 +5,6 @@ class_name Player
 @onready var gs: GameStateData = get_node("/root/GameState") as GameStateData
 @onready var camera: Camera2D = get_viewport().get_camera_2d()
 @onready var rng: RNGService = get_node("/root/RNG") as RNGService
-@onready var run_inv: RunInventory = get_node("/root/RunInv") as RunInventory
-@onready var market_db: MarketDB = get_node("/root/DB") as MarketDB
 
 @export var hurtbox_path: NodePath   # set this to the CollisionShape2D used as the hitbox/hurtbox
 
@@ -25,9 +23,6 @@ var cashout_time := 2.0
 var damage_flash_timer := 0.0
 var invulnerable_timer := 0.0
 const INVULNERABLE_TIME := 1.0
-
-# Item system variables
-var temp_shield := 0
 
 var _hurtbox: CollisionShape2D = null
 
@@ -64,12 +59,7 @@ func _physics_process(_delta: float) -> void:
 		_update_dash(_delta)
 		_update_cashout(_delta)
 		_update_damage_effects(_delta)
-
-func _input(event: InputEvent) -> void:
-		if event.is_action_pressed("Special"):
-				_use_active_item()
-		elif event.is_action_pressed("item_cycle"):
-				_cycle_active_item()
+		_update_heat_upshift_input()
 
 func _update_movement() -> void:
 		var dir := Vector2.ZERO
@@ -126,20 +116,24 @@ func _update_damage_effects(delta: float) -> void:
 func take_damage(dmg: int = 1) -> void:
 		if is_dashing or invulnerable_timer > 0:
 				return
-		
-		# Check temp shield first
-		if temp_shield > 0:
-				temp_shield -= 1
-				_play_guard_effect()
-				return  # Negate damage
-		
 		hp = max(0, hp - dmg)
 		_damage_effects()
 		_update_health_ui_with_damage(dmg)
 		if camera:
 				_camera_shake(0.3, 10.0)
+		
+		# Heat downshift on hit
+		if gs:
+				gs.heat_downshift()
+		
+		# Show heat downshift feedback
+		var ui = get_tree().get_first_node_in_group("ui")
+		if ui and ui.has_method("show_heat_downshift_feedback"):
+				ui.show_heat_downshift_feedback()
+		
 		if hp <= 0:
-				gs.end_run(false)
+				if gs:
+						gs.end_run(false)
 
 func _damage_effects() -> void:
 		damage_flash_timer = 0.2
@@ -187,59 +181,11 @@ func _on_hp_delta(delta_frac: float) -> void:
 		hp = clamp(hp - change, 1, max_hp)
 		_update_health_ui()
 
-# Item system methods
-func add_temp_shield(n: int) -> void:
-		temp_shield = min(temp_shield + n, 3)  # Cap for sanity
-		_show_item_feedback("shield")
-
-func _use_active_item() -> void:
-		if not run_inv:
-				return
-		
-		var active_item_id = run_inv.get_active_item()
-		if active_item_id.is_empty():
-				return
-		
-		if run_inv.count(active_item_id) <= 0:
-				return
-		
-		var item_def = market_db.get_item(active_item_id)
-		if not item_def:
-				return
-		
-		# Create and use the item effect
-		var effect_scene = item_def.effect_scene
-		if effect_scene:
-				var effect = effect_scene.instantiate()
-				effect.item_id = active_item_id
-				add_child(effect)
-				
-				# Connect to consumption signal
-				effect.consumed.connect(func(_id):
-						run_inv.consume(_id)
-						_show_item_feedback(_id)
-				)
-				
-				effect.use(self, gs)
-		else:
-				# Fallback for items without effects
-				run_inv.consume(active_item_id)
-				_show_item_feedback(active_item_id)
-
-func _cycle_active_item() -> void:
-		if run_inv:
-				run_inv.cycle_active_item()
-
-func _show_item_feedback(item_id: StringName) -> void:
-		# Visual feedback for item usage
-		var item_def = market_db.get_item(item_id)
-		if item_def:
-				print("Used item: ", item_def.display_name)
-				# Could add screen flash, icon ping, sound effect here
-
-func _play_guard_effect() -> void:
-		# Visual effect for shield blocking damage
-		modulate = Color.CYAN
-		var tw := create_tween()
-		tw.tween_property(self, "modulate", Color.WHITE, 0.2)
-		# Could add shield particle effect here
+func _update_heat_upshift_input() -> void:
+		if Input.is_action_just_pressed("HeatUpshift"):
+				print("DEBUG: Player detected HeatUpshift input")
+				if gs:
+						print("DEBUG: Player calling gs.heat_upshift()")
+						gs.heat_upshift()
+				else:
+						print("DEBUG: Player gs is null")

@@ -1,8 +1,6 @@
 extends CanvasLayer
 
 var gs: GameStateData
-var run_inv: RunInventory
-var market_db: MarketDB
 var health_bar: ProgressBar
 var health_hearts: HBoxContainer
 var risk_bar: ProgressBar
@@ -12,189 +10,240 @@ var multiplier_label: Label
 var status_text: Label
 var damage_overlay: ColorRect
 var damage_indicator: Label
-var toast_container: VBoxContainer
-var active_toasts: Array[Label] = []
+var heat_lever: HeatLever
+var heat_indicator_label: Label  # Simple fallback heat indicator
 
-var item_hud: HBoxContainer
-var item_labels: Array[Label] = []
-
+# Damage system variables
 var damage_flash_timer := 0.0
 var current_damage_indicators: Array = []
 
 func _ready() -> void:
-				gs = get_node("/root/GameState") as GameStateData
+		gs = get_node("/root/GameState") as GameStateData
+		add_to_group("ui")
 
-				# Autoloads by YOUR names
-				run_inv = get_node_or_null("/root/RunInv") as RunInventory
-				market_db = get_node_or_null("/root/DB") as MarketDB
-				if not run_inv: push_warning("Autoload RunInv not found at /root/RunInv")
-				if not market_db: push_warning("Autoload DB not found at /root/DB")
+		# Start hidden; StartOverlay shows menu; HUD appears only when run starts
+		visible = false
 
-				add_to_group("ui")
-				visible = false
+		# Get UI nodes
+		health_bar = get_node_or_null("MainContainer/TopBar/HealthSection/HealthBar")
+		health_hearts = get_node_or_null("MainContainer/TopBar/HealthSection/HealthHearts")
+		risk_bar = get_node_or_null("MainContainer/TopBar/RiskSection/RiskBar")
+		banked_label = get_node_or_null("MainContainer/TopBar/CoinSection/BankedCoins")
+		unbanked_label = get_node_or_null("MainContainer/TopBar/CoinSection/UnbankedCoins")
+		multiplier_label = get_node_or_null("MainContainer/TopBar/CoinSection/Multiplier")
+		status_text = get_node_or_null("MainContainer/BottomBar/StatusSection/StatusText")
+		damage_overlay = get_node_or_null("DamageOverlay")
+		damage_indicator = get_node_or_null("DamageIndicator")
+		
+		# Try to get heat lever with multiple possible paths
+		heat_lever = null
+		var heat_lever_paths = [
+				"MainContainer/TopBar/HeatLeverSection/HeatLeverInstance",
+				"MainContainer/TopBar/HeatLeverSection",
+				"HeatLeverInstance"
+		]
+		
+		for path in heat_lever_paths:
+				var node = get_node_or_null(path)
+				if node:
+						heat_lever = node as HeatLever
+						if heat_lever:
+								print("DEBUG: UI - Found HeatLever at path: ", path)
+								break
+						else:
+								print("DEBUG: UI - Found node at path ", path, " but it's not a HeatLever")
+				else:
+						print("DEBUG: UI - No node found at path: ", path)
+		
+		if not heat_lever:
+				print("DEBUG: UI - Could not find HeatLever at any path")
+				# List all children to help debug
+				print("DEBUG: UI - MainContainer children:")
+				if has_node("MainContainer"):
+						var main_container = get_node("MainContainer")
+						for child in main_container.get_children():
+								print("  - ", child.name, " (", child.get_class(), ")")
+								if child is VBoxContainer:
+										for subchild in child.get_children():
+												print("    - ", subchild.name, " (", subchild.get_class(), ")")
+		
+		# Create simple heat indicator as fallback
+		heat_indicator_label = get_node_or_null("MainContainer/TopBar/HeatLeverSection/HeatIndicator")
+		if not heat_indicator_label:
+				# Try to create a simple label for heat display
+				heat_indicator_label = Label.new()
+				heat_indicator_label.name = "HeatIndicator"
+				heat_indicator_label.text = "HEAT: Warm"
+				if has_node("MainContainer/TopBar/HeatLeverSection"):
+						get_node("MainContainer/TopBar/HeatLeverSection").add_child(heat_indicator_label)
+						print("DEBUG: UI - Created fallback heat indicator")
 
-				health_bar = get_node_or_null("MainContainer/TopBar/HealthSection/HealthBar")
-				health_hearts = get_node_or_null("MainContainer/TopBar/HealthSection/HealthHearts")
-				risk_bar = get_node_or_null("MainContainer/TopBar/RiskSection/RiskBar")
-				banked_label = get_node_or_null("MainContainer/TopBar/CoinSection/BankedCoins")
-				unbanked_label = get_node_or_null("MainContainer/TopBar/CoinSection/UnbankedCoins")
-				multiplier_label = get_node_or_null("MainContainer/TopBar/CoinSection/Multiplier")
-				status_text = get_node_or_null("MainContainer/BottomBar/StatusSection/StatusText")
-				damage_overlay = get_node_or_null("DamageOverlay")
-				damage_indicator = get_node_or_null("DamageIndicator")
+		# Hide any in-HUD back/shop button if it exists (HUD should not navigate)
+		var back_btn := get_node_or_null("MainContainer/BottomBar/ControlsSection/BackButton") as Button
+		if back_btn:
+				back_btn.visible = false
+		var shop_btn := get_node_or_null("MainContainer/BottomBar/ControlsSection/ShopButton") as Button
+		if shop_btn:
+				shop_btn.visible = false
 
-				_setup_item_hud()
-				_setup_toast_system()
+		# Connect game state signals
+		if gs:
+				if not gs.coins_changed.is_connected(_on_coins):
+						gs.coins_changed.connect(_on_coins)
+				if not gs.banked_changed.is_connected(_on_banked):
+						gs.banked_changed.connect(_on_banked)
+				if not gs.bm_changed.is_connected(_on_bm):
+						gs.bm_changed.connect(_on_bm)
+				if not gs.risk_tier_changed.is_connected(_on_heat):
+						gs.risk_tier_changed.connect(_on_heat)
+				if not gs.heat_changed.is_connected(_on_heat_changed):
+						gs.heat_changed.connect(_on_heat_changed)
+				# Visibility control
+				if not gs.run_started.is_connected(_on_run_started):
+						gs.run_started.connect(_on_run_started)
+				if not gs.run_over.is_connected(_on_run_over):
+						gs.run_over.connect(_on_run_over)
+		
+		# Connect heat lever signals
+		if heat_lever:
+				print("DEBUG: UI - Connecting heat lever signals")
+				if not heat_lever.heat_upshift_pressed.is_connected(_on_heat_upshift_pressed):
+						heat_lever.heat_upshift_pressed.connect(_on_heat_upshift_pressed)
+						print("DEBUG: UI - Successfully connected heat_upshift_pressed signal")
+				else:
+						print("DEBUG: UI - heat_upshift_pressed signal already connected")
+		else:
+				print("DEBUG: UI - heat_lever is null, cannot connect signals")
 
-				var back_btn := get_node_or_null("MainContainer/BottomBar/ControlsSection/BackButton") as Button
-				if back_btn: back_btn.visible = false
-				var shop_btn := get_node_or_null("MainContainer/BottomBar/ControlsSection/ShopButton") as Button
-				if shop_btn: shop_btn.visible = false
+		# Process for damage flash
+		set_process(true)
 
-				if gs:
-								if not gs.coins_changed.is_connected(_on_coins): gs.coins_changed.connect(_on_coins)
-								if not gs.banked_changed.is_connected(_on_banked): gs.banked_changed.connect(_on_banked)
-								if not gs.bm_changed.is_connected(_on_bm): gs.bm_changed.connect(_on_bm)
-								if not gs.risk_tier_changed.is_connected(_on_heat): gs.risk_tier_changed.connect(_on_heat)
-								if not gs.run_started.is_connected(_on_run_started): gs.run_started.connect(_on_run_started)
-								if not gs.run_over.is_connected(_on_run_over): gs.run_over.connect(_on_run_over)
-								if not gs.tool_used.is_connected(_on_tool_used): gs.tool_used.connect(_on_tool_used)
-								if not gs.tool_expired.is_connected(_on_tool_expired): gs.tool_expired.connect(_on_tool_expired)
+func _process(delta: float) -> void:
+		# Update damage flash
+		if damage_flash_timer > 0.0:
+				damage_flash_timer -= delta
+				if damage_overlay:
+						damage_overlay.visible = true
+						damage_overlay.color.a = min(0.5, max(0.0, damage_flash_timer * 0.5))
+		else:
+				if damage_overlay:
+						damage_overlay.visible = false
 
-				if run_inv and not run_inv.changed.is_connected(_on_inventory_changed):
-								run_inv.changed.connect(_on_inventory_changed)
+		# Update floating indicators (if any custom controls added there)
+		for i in range(current_damage_indicators.size() - 1, -1, -1):
+				var indicator = current_damage_indicators[i]
+				if indicator and indicator.has_method("update"):
+						indicator.update(delta)
+						if indicator.has_method("is_finished") and indicator.is_finished():
+								indicator.queue_free()
+								current_damage_indicators.remove_at(i)
 
-				set_process(true)
-
-# ----- Item HUD -----
-func _setup_item_hud() -> void:
-				item_hud = get_node_or_null("MainContainer/ItemHUD") as HBoxContainer
-				if not item_hud:
-								item_hud = HBoxContainer.new()
-								item_hud.name = "ItemHUD"
-								item_hud.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-								item_hud.position = Vector2(20, -100)
-								item_hud.add_theme_constant_override("separation", 10)
-								add_child(item_hud)
-
-				item_labels.clear()
-				for i in range(3):
-								var item_label := Label.new()
-								item_label.text = "[ ]"
-								item_label.add_theme_font_size_override("font_size", 14)
-								item_label.add_theme_color_override("font_color", Color.WHITE)
-								item_labels.append(item_label)
-								item_hud.add_child(item_label)
-
-				_update_item_hud()
-
-func _update_item_hud() -> void:
-				if not run_inv or item_labels.is_empty() or not market_db:
-								return
-
-				var equipped_items: Array = []
-				if run_inv.has_method("get_equipped_items"):
-								equipped_items = run_inv.get_equipped_items()
-				elif "equipped" in run_inv:
-								equipped_items = run_inv.equipped
-
-				var active_cursor: int = 0
-				if "active_item_cursor" in run_inv:
-								active_cursor = int(run_inv.active_item_cursor)
-
-				for i in range(item_labels.size()):
-								var label := item_labels[i]
-								if i < equipped_items.size():
-												var item_id: StringName = equipped_items[i]
-												var def := market_db.get_item(item_id)
-												var count := run_inv.count(item_id) if run_inv.has_method("count") else 0
-												
-												if def:
-																# Check if it's a one-time use item
-																if def.one_time_use:
-																				label.text = "[%s] %d" % [def.display_name.left(3), count]
-																				# Grey out if no charges left
-																				if count <= 0:
-																								label.add_theme_color_override("font_color", Color.GRAY)
-																				else:
-																								label.add_theme_color_override("font_color", Color.YELLOW if i == active_cursor else Color.WHITE)
-																else:
-																				label.text = "[%s] %dx" % [def.display_name.left(3), count]
-																				label.add_theme_color_override("font_color", Color.YELLOW if i == active_cursor else Color.WHITE)
-												else:
-																label.text = "[%s] %d" % [String(item_id).left(3), count]
-																label.add_theme_color_override("font_color", Color.YELLOW if i == active_cursor else Color.WHITE)
-								else:
-												label.text = "[ ]"
-												label.add_theme_color_override("font_color", Color.GRAY)
-
-# ----- Toast System -----
-func _setup_toast_system() -> void:
-				toast_container = VBoxContainer.new()
-				toast_container.name = "ToastContainer"
-				toast_container.set_anchors_preset(Control.PRESET_TOP_WIDE)
-				toast_container.position = Vector2(0, 100)
-				toast_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-				toast_container.alignment = BoxContainer.ALIGNMENT_CENTER
-				add_child(toast_container)
-
-func show_toast(message: String, duration: float = 2.0) -> void:
-				var toast := Label.new()
-				toast.text = message
-				toast.add_theme_font_size_override("font_size", 18)
-				toast.add_theme_color_override("font_color", Color.YELLOW)
-				toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-				toast.modulate = Color(1, 1, 1, 0)
-				
-				toast_container.add_child(toast)
-				active_toasts.append(toast)
-				
-				# Fade in
-				var tween := create_tween()
-				tween.tween_property(toast, "modulate", Color(1, 1, 1, 1), 0.2)
-				
-				# Wait and fade out
-				await get_tree().create_timer(duration).timeout
-				tween = create_tween()
-				tween.tween_property(toast, "modulate", Color(1, 1, 1, 0), 0.2)
-				await tween.finished
-				
-				toast_container.remove_child(toast)
-				active_toasts.erase(toast)
-				toast.queue_free()
-
-func _on_tool_used(tool_id: StringName, message: String) -> void:
-				show_toast(message, 2.0)
-				_update_item_hud()  # Update to show reduced charges
-
-func _on_tool_expired(tool_id: StringName) -> void:
-				show_toast("%s expired" % String(tool_id).replace("_", " ").capitalize(), 1.5)
-				_update_item_hud()  # Update to show expired state
-
-func _on_inventory_changed() -> void:
-				_update_item_hud()
-				
-# ----- HUD signal handlers -----
+# ----- UI visibility driven by game state -----
 
 func _on_run_started() -> void:
-				visible = true
-				_update_item_hud()
+		visible = true
 
 func _on_run_over(_extracted: bool) -> void:
-				visible = false
+		visible = false
+
+# ----- Small signal relays -----
 
 func _on_coins(v: int) -> void:
-				if unbanked_label:
-								unbanked_label.text = "🍪 %d" % v
+		if unbanked_label:
+				unbanked_label.text = "At-Risk: %d" % v
 
 func _on_banked(v: int) -> void:
-				if banked_label:
-								banked_label.text = "💰 %d" % v
+		if banked_label:
+				banked_label.text = "Banked: %d" % v
 
 func _on_bm(v: float) -> void:
-				if multiplier_label:
-								multiplier_label.text = "BM ×%.1f" % v
+		if multiplier_label:
+				multiplier_label.text = "BM ×%.1f" % v
 
 func _on_heat(tier: int) -> void:
-				if risk_bar:
-								risk_bar.value = tier
+		if risk_bar:
+				risk_bar.value = tier
+
+func _on_heat_changed(tier: int) -> void:
+		print("DEBUG: UI received heat_changed signal, tier: ", tier)
+		# Handle heat lever visual updates
+		if heat_lever and heat_lever.has_method("show_heat_upshift_feedback"):
+				heat_lever.show_heat_upshift_feedback()
+		
+		# Simple fallback heat indicator
+		if heat_indicator_label:
+				var heat_names = ["Warm", "Hot", "Inferno"]
+				var heat_colors = [Color.WHITE, Color.YELLOW, Color.ORANGE]
+				heat_indicator_label.text = "HEAT: " + heat_names[tier]
+				heat_indicator_label.modulate = heat_colors[tier]
+				print("DEBUG: UI - Updated fallback heat indicator to: ", heat_indicator_label.text)
+
+func _on_heat_upshift_pressed() -> void:
+		print("DEBUG: UI received heat_upshift_pressed signal, calling gs.heat_upshift()")
+		if gs:
+				gs.heat_upshift()
+
+# ----- Public API called by Player -----
+
+func update_health(current_hp: int, max_hp: int) -> void:
+		# Health bar
+		if health_bar:
+				health_bar.value = float(current_hp) / float(max_hp) * 100.0
+
+		# Hearts
+		if health_hearts:
+				for child in health_hearts.get_children():
+						child.queue_free()
+				for i in range(max_hp):
+						var heart := TextureRect.new()
+						heart.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+						heart.custom_minimum_size = Vector2(32, 32)
+						if i < current_hp:
+								heart.modulate = Color.RED
+						else:
+								heart.modulate = Color.DARK_RED
+						var tex := PlaceholderTexture2D.new()
+						tex.size = Vector2(32, 32)
+						heart.texture = tex
+						health_hearts.add_child(heart)
+
+		# Status banner
+		if status_text:
+				if current_hp <= 0:
+						status_text.text = "DEFEATED"
+						status_text.modulate = Color.RED
+				elif current_hp <= int(round(max_hp * 0.3)):
+						status_text.text = "CRITICAL"
+						status_text.modulate = Color.ORANGE
+				elif current_hp <= int(round(max_hp * 0.6)):
+						status_text.text = "DAMAGED"
+						status_text.modulate = Color.YELLOW
+				else:
+						status_text.text = "Normal"
+						status_text.modulate = Color.WHITE
+
+func show_damage_effect(damage_amount: int, position: Vector2 = Vector2.ZERO) -> void:
+		# Flash the screen
+		damage_flash_timer = 0.3
+		# Optional: floating damage numbers (omitted unless you spawn labels here)
+
+func update_furnace_status(phase: String) -> void:
+		if status_text:
+				if phase == "NORMAL":
+						status_text.text = "Normal"
+						status_text.modulate = Color.WHITE
+				elif phase == "SHAKING":
+						status_text.text = "TRANSFORMING..."
+						status_text.modulate = Color.ORANGE
+				elif phase == "MOBILE":
+						status_text.text = "MOBILE PHASE"
+						status_text.modulate = Color.RED
+
+func show_game_over(victory: bool) -> void:
+		# EndOverlay handles the overlay; HUD stays hidden after run_over
+		pass
+
+func show_heat_downshift_feedback() -> void:
+		# Called when player gets hit and heat tier decreases
+		if heat_lever and heat_lever.has_method("show_heat_downshift_feedback"):
+				heat_lever.show_heat_downshift_feedback()
