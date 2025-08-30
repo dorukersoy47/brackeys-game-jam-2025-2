@@ -10,17 +10,17 @@ radius = 30.0
 [node name="Furnace" type="CharacterBody2D"]
 z_index = 50
 collision_layer = 2
+collision_mask = 17
+motion_mode = 1
 script = ExtResource("1_rld0g")
 
 [node name="normal_sprite" type="Sprite2D" parent="."]
-visible = false
 texture = ExtResource("2_u4337")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("CircleShape2D_u4337")
 
 [node name="mobile_sprite" type="Sprite2D" parent="."]
-visible = false
 texture = ExtResource("3_0fga7")
 
 [node name="furnace" type="Sprite2D" parent="."]

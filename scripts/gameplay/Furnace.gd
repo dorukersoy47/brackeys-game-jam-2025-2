@@ -52,6 +52,7 @@ var interaction_distance := 80.0
 
 func _ready() -> void:
 		add_to_group("furnace")
+		safe_margin = 2.0    # Slightly larger to avoid tunneling on scaled arenas
 
 		# Cache original position/scale
 		original_scale = scale
@@ -292,6 +293,12 @@ func _update_ui_status(phase: String) -> void:
 # ------------------------------
 # Movement helpers
 # ------------------------------
+func _physics_process(_delta: float) -> void:
+	if not gs or not gs.running:
+		return
+	if current_phase == Phase.MOBILE:
+		move_and_slide()
+
 func _change_movement_direction() -> void:
 		var angle = rng.randf_range(0.0, TAU)
 		movement_direction = Vector2.RIGHT.rotated(angle)
@@ -338,7 +345,6 @@ func _update_pattern_movement(delta: float) -> void:
 						_change_movement_direction()
 						movement_change_timer = rng.randf_range(2.0, 4.0)
 				velocity = movement_direction * mobile_speed
-				move_and_slide()
 				return
 
 		# Follow waypoints
@@ -348,7 +354,6 @@ func _update_pattern_movement(delta: float) -> void:
 
 		if distance > 10.0:
 				velocity = direction * mobile_speed
-				move_and_slide()
 		else:
 				current_path_index = (current_path_index + 1) % path_points.size()
 				if current_path_index == 0 and rng.randf() < 0.3:

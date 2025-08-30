@@ -1,6 +1,6 @@
 [gd_scene load_steps=3 format=3 uid="uid://ckq13bkgrg2gf"]
 
-[ext_resource type="Script" path="res://scripts/gameplay/Pickup.gd" id="1_s6scd"]
+[ext_resource type="Script" uid="uid://dieb3ntpd4e7q" path="res://scripts/gameplay/Pickup.gd" id="1_s6scd"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_hesur"]
 

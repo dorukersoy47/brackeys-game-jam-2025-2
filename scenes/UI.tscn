@@ -1,31 +1,11 @@
-[gd_scene load_steps=5 format=3 uid="uid://cuxw77oj0tuhm"]
+[gd_scene load_steps=3 format=3 uid="uid://cuxw77oj0tuhm"]
 
-[ext_resource type="Script" uid="uid://c2p32vtxgj2et" path="res://scripts/ui/TemptationModal.gd" id="1_dj8aq"]
 [ext_resource type="Script" uid="uid://cq0s0t044dnhr" path="res://scripts/ui/UI.gd" id="1_ro3t7"]
-[ext_resource type="Script" uid="uid://bfekwxextk8uw" path="res://scripts/gameplay/TemptationSpawner.gd" id="3_5en4g"]
 [ext_resource type="Script" uid="uid://buiu3he5gc5yg" path="res://scripts/ui/HeatLever.gd" id="4_ua6yw"]
 
 [node name="Ui" type="CanvasLayer"]
 layer = 50
 script = ExtResource("1_ro3t7")
-
-[node name="TemptationModal" type="Control" parent="."]
-layout_mode = 3
-anchors_preset = 0
-offset_left = 888.0
-offset_top = 1.0
-offset_right = 1153.0
-offset_bottom = 50.0
-script = ExtResource("1_dj8aq")
-
-[node name="TemptationSpawner" type="Control" parent="."]
-layout_mode = 3
-anchors_preset = 0
-offset_top = 93.0
-offset_right = 40.0
-offset_bottom = 133.0
-script = ExtResource("3_5en4g")
-modal_path = NodePath("../TemptationModal")
 
 [node name="ColorRect" type="ColorRect" parent="."]
 offset_left = 21.0
