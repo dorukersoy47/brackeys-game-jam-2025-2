@@ -26,6 +26,7 @@ var original_scale := Vector2.ONE
 var trail_particles: GPUParticles2D
 
 func _ready() -> void:
+		add_to_group("bullets")
 		original_scale = scale
 
 		# --- Collisions: EnemyBullet (layer 4) hits Player (mask 1) AND World walls (mask 5) ---

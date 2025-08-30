@@ -21,6 +21,7 @@ var phase_timer := 0.0
 
 # Visual / sprite setup (keep v1 paths & node name)
 var sprite: Sprite2D
+var original_position := Vector2.ZERO
 var original_scale := Vector2.ONE
 var last_facing_direction := 1 # 1 right, -1 left
 var unlit_texture: Texture2D
@@ -56,6 +57,7 @@ func _ready() -> void:
 
 		# Cache original position/scale
 		original_scale = scale
+		original_position = global_position
 
 		# Resolve bullet pool
 		if bullet_pool_path:
@@ -289,6 +291,13 @@ func _update_ui_status(phase: String) -> void:
 		var ui = get_tree().get_first_node_in_group("ui")
 		if ui and ui.has_method("update_furnace_status"):
 				ui.update_furnace_status(phase)
+
+func reset_for_menu() -> void:
+	game_active = false
+	velocity = Vector2.ZERO
+	global_position = original_position
+	visible = true
+	_enter_inactive_phase()
 
 # ------------------------------
 # Movement helpers

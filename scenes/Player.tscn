@@ -3,8 +3,9 @@
 [ext_resource type="Script" uid="uid://c75j5gmbssr3f" path="res://scripts/gameplay/Player.gd" id="1_p0vlq"]
 [ext_resource type="Texture2D" uid="uid://jjpume5kg5nj" path="res://art/Player-64x64.png" id="2_v6fml"]
 
-[sub_resource type="CircleShape2D" id="CircleShape2D_5q5h1"]
-radius = 24.0
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_v6fml"]
+radius = 12.0
+height = 52.0
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_p0vlq"]
 radius = 64.0
@@ -18,7 +19,9 @@ script = ExtResource("1_p0vlq")
 texture = ExtResource("2_v6fml")
 
 [node name="hurtbox" type="CollisionShape2D" parent="."]
-shape = SubResource("CircleShape2D_5q5h1")
+z_index = 300
+position = Vector2(0, 1)
+shape = SubResource("CapsuleShape2D_v6fml")
 
 [node name="Magnet" type="Area2D" parent="."]
 collision_layer = 2

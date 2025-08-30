@@ -15,3 +15,7 @@ func shrink_arena(amount: float) -> void:
 
 func get_shrink_level() -> float:
 	return shrink_level
+	
+func reset_arena() -> void:
+	shrink_level = 0.0
+	scale = Vector2(1.0, 1.0)

@@ -44,6 +44,9 @@ func _ready() -> void:
 		if _hurtbox == null:
 				_hurtbox = get_node_or_null("CollisionShape2D") as CollisionShape2D
 
+		if gs and not gs.run_started.is_connected(_on_run_started):
+			gs.run_started.connect(_on_run_started)
+		
 		gs.connect("request_player_hp_delta", _on_hp_delta)
 
 		# upgrades
@@ -189,3 +192,30 @@ func _update_heat_upshift_input() -> void:
 						gs.heat_upshift()
 				else:
 						print("DEBUG: Player gs is null")
+
+# ----- Game Over Methods for Reset
+func _on_run_started() -> void:
+		invulnerable_timer = 0.0
+		damage_flash_timer = 0.0
+		is_dashing = false
+		dash_cd = 0.0
+		cashout_hold = 0.0
+		modulate = Color.WHITE
+		hp = max_hp
+		velocity = Vector2.ZERO
+		if _hurtbox:
+			_hurtbox.disabled = false
+		_update_health_ui()
+
+func reset_for_menu() -> void:
+		invulnerable_timer = 0.0
+		damage_flash_timer = 0.0
+		is_dashing = false
+		dash_cd = 0.0
+		cashout_hold = 0.0
+		modulate = Color.WHITE
+		hp = max_hp
+		velocity = Vector2.ZERO
+		if _hurtbox:
+			_hurtbox.disabled = false
+		_update_health_ui()

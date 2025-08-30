@@ -20,13 +20,16 @@ func trigger_elite_burst() -> void:
 		elite_pending = true
 
 func _process(_delta: float) -> void:
-		if not gs:
+		if not gs or not gs.running:
 				return
 		# Simple scheduler: decide patterns based on heat and time
 		if active_types.size() < 1:
 				_start_pattern(_pick_pattern())
 		if gs.heat_tier >= 1 and active_types.size() < 2 and rng.randf() < 0.005:
 				_start_pattern(_pick_pattern())
+
+func stop_all() -> void:
+	active_types.clear()
 
 func _start_pattern(kind: String) -> void:
 		if active_types.has(kind):

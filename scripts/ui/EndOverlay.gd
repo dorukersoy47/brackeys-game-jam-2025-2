@@ -87,6 +87,12 @@ func _on_back_to_menu() -> void:
 	visible = false
 	get_tree().paused = false
 	if start_overlay:
+		# RESET world state when returning to menu
+		get_tree().call_group("arena", "reset_arena")
+		get_tree().call_group("furnace", "reset_for_menu")
+		get_tree().call_group("player", "reset_for_menu")
+		get_tree().call_group("pattern_controller", "stop_all")
+		get_tree().call_group("bullets", "clear_all")
 		start_overlay.visible = true
 
 # -------------------- Stats --------------------
