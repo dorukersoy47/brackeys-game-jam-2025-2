@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://do6fhvx8fbfpb"]
+
+[ext_resource type="Script" uid="uid://bbqts4viewvjb" path="res://scripts/market/effects/TillSweepEffect.gd" id="1_vbtow"]
+
+[node name="TillSweepEffect" type="Node"]
+script = ExtResource("1_vbtow")

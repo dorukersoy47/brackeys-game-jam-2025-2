@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3 uid="uid://nhup04ybstr6"]
+
+[ext_resource type="Script" uid="uid://dkkdnmbh8crqf" path="res://scripts/market/effects/RootIconEffect.gd" id="1_rooticon"]
+
+[node name="RootIcon" type="Sprite2D"]
+position = Vector2(0, -40)
+script = ExtResource("1_rooticon")

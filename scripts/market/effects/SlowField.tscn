@@ -1,0 +1,12 @@
+[gd_scene load_steps=2 format=3 uid="uid://df1whl1kqj2w2"]
+
+[ext_resource type="Script" uid="uid://bo7d72klxkr0n" path="res://scripts/market/effects/SlowFieldEffect.gd" id="1_slowfield"]
+
+[node name="SlowField" type="ColorRect"]
+modulate = Color(0.2, 0.4, 0.8, 0.1)
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_slowfield")

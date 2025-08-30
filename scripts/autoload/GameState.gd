@@ -15,6 +15,8 @@ signal run_over(extracted: bool)
 signal run_started()   # <-- NEW (UI listens to this to become visible)
 signal request_bullet_clear()
 signal request_force_shrine()
+signal tool_used(tool_id: StringName, message: String)
+signal tool_expired(tool_id: StringName)
 
 # Run state
 var running := false
@@ -46,6 +48,9 @@ var risk_tier_period := 30.0
 # Meta modifiers
 var coin_rate_bonus := 0.0
 var cashout_bonus := 0.0  # -seconds to channel (applied in Player)
+var pattern_speed_modifiers: Array[float] = []
+var tips_multipliers: Array[float] = []
+var total_multipliers: Array[float] = []
 
 # Feature flags for phased development
 var FF_HEAT: bool = false
@@ -57,172 +62,215 @@ var FF_GRAZE: bool = false
 @onready var DB: MarketDB = get_node("/root/DB")
 
 func start_run() -> void:
-								running = true
-								survival_time = 0.0
-								heat = 0
-								var _streak_i: int = int(Save.data.get("streak", 0))
-								bm = 1.0 + min(0.5, float(_streak_i) * 0.1)
-								unbanked = 0
-								t_since_temptation = 0.0
-								t_since_shrine = 0.0
-								t_since_pulse = 0.0
-								t_since_bm_tick = 0.0
-								t_since_heat = 0.0
-								coin_rate_bonus = Save.get_upgrade("coin_rate") * 0.2
-								cashout_bonus = Save.get_upgrade("cashout") * 0.2
-								
-								# Setup run inventory with equipped items
-								var run_inv = get_tree().get_first_node_in_group("RunInventory") as RunInventory
-								if run_inv:
-																run_inv.setup_for_run(Save.data, DB)
-																_apply_passive_items()
-								
-								emit_signal("bm_changed", bm)
-								emit_signal("coins_changed", unbanked)
-								emit_signal("run_started")  # <-- tell UI to show
+																running = true
+																survival_time = 0.0
+																heat = 0
+																var _streak_i: int = int(Save.data.get("streak", 0))
+																bm = 1.0 + min(0.5, float(_streak_i) * 0.1)
+																unbanked = 0
+																t_since_temptation = 0.0
+																t_since_shrine = 0.0
+																t_since_pulse = 0.0
+																t_since_bm_tick = 0.0
+																t_since_heat = 0.0
+																coin_rate_bonus = Save.get_upgrade("coin_rate") * 0.2
+																cashout_bonus = Save.get_upgrade("cashout") * 0.2
+																
+																# Setup run inventory with equipped items
+																var run_inv = get_tree().get_first_node_in_group("RunInventory") as RunInventory
+																if run_inv:
+																																run_inv.setup_for_run(Save.data, DB)
+																																_apply_passive_items()
+																
+																emit_signal("bm_changed", bm)
+																emit_signal("coins_changed", unbanked)
+																emit_signal("run_started")  # <-- tell UI to show
 
 func end_run(extracted: bool) -> void:
-								running = false
-								if extracted:
-																Save.data["streak"] = int(Save.data.get("streak", 0)) + 1
-								else:
-																Save.data["streak"] = 0
-																if Save.data["options"].get("insurance", false) and unbanked > 0:
-																								var salvage := int(round(unbanked * 0.05))
-																								banked += salvage
-																								Save.add_bank(salvage)
-																								emit_signal("banked_changed", banked)
-								Save.save_game()
-								emit_signal("run_over", extracted)
+																running = false
+																if extracted:
+																																Save.data["streak"] = int(Save.data.get("streak", 0)) + 1
+																else:
+																																Save.data["streak"] = 0
+																																if Save.data["options"].get("insurance", false) and unbanked > 0:
+																																																var salvage := int(round(unbanked * 0.05))
+																																																banked += salvage
+																																																Save.add_bank(salvage)
+																																																emit_signal("banked_changed", banked)
+																Save.save_game()
+																emit_signal("run_over", extracted)
 
 func _process(delta: float) -> void:
-								if not running:
-																return
-								survival_time += delta
-								t_since_temptation += delta
-								t_since_shrine += delta
-								t_since_pulse += delta
-								t_since_bm_tick += delta
-								t_since_heat += delta
+																if not running:
+																																return
+																survival_time += delta
+																t_since_temptation += delta
+																t_since_shrine += delta
+																t_since_pulse += delta
+																t_since_bm_tick += delta
+																t_since_heat += delta
 
-								# Passive coins
-								var rate := base_coin_rate + coin_rate_bonus
-								add_unbankedf(rate * delta * bm)
+																# Passive coins
+																var rate := base_coin_rate + coin_rate_bonus
+																add_unbankedf(rate * delta * bm)
 
-								# BM tick (+0.3 every 20s)
-								if t_since_bm_tick >= 20.0:
-																t_since_bm_tick -= 20.0
-																add_bm(0.3)
+																# BM tick (+0.3 every 20s)
+																if t_since_bm_tick >= 20.0:
+																																t_since_bm_tick -= 20.0
+																																add_bm(0.3)
 
-								# Heat tiering (every 30s)
-								if heat < 3 and t_since_heat >= risk_tier_period:
-																t_since_heat -= risk_tier_period
-																heat += 1
-																emit_signal("risk_tier_changed", heat)
+																# Heat tiering (every 30s)
+																if heat < 3 and t_since_heat >= risk_tier_period:
+																																t_since_heat -= risk_tier_period
+																																heat += 1
+																																emit_signal("risk_tier_changed", heat)
 
-								# Temptation spawn
-								if t_since_temptation >= temptation_interval:
-																t_since_temptation = 0.0
-																emit_signal("spawn_temptation")
+																# Temptation spawn
+																if t_since_temptation >= temptation_interval:
+																																t_since_temptation = 0.0
+																																emit_signal("spawn_temptation")
 
-								# Shrine spawn
-								if t_since_shrine >= shrine_interval:
-																t_since_shrine = 0.0
-																emit_signal("spawn_shrine")
+																# Shrine spawn
+																if t_since_shrine >= shrine_interval:
+																																t_since_shrine = 0.0
+																																emit_signal("spawn_shrine")
 
-								# Boss Pulse
-								if t_since_pulse >= pulse_interval:
-																t_since_pulse = 0.0
-																emit_signal("pulse_started")
+																# Boss Pulse
+																if t_since_pulse >= pulse_interval:
+																																t_since_pulse = 0.0
+																																emit_signal("pulse_started")
 
 func pulse_end(success: bool) -> void:
-								emit_signal("pulse_finished", success)
-								if success:
-																# Reward Golden Biscuit via Pickup spawner
-																pass
+																emit_signal("pulse_finished", success)
+																if success:
+																																# Reward Golden Biscuit via Pickup spawner
+																																pass
 
 func add_unbanked(amount: int) -> void:
-								unbanked += max(amount, 0)
-								emit_signal("coins_changed", unbanked)
+																unbanked += max(amount, 0)
+																emit_signal("coins_changed", unbanked)
 
 func add_unbankedf(amountf: float) -> void:
-								var a := int(amountf)
-								if a != 0:
-																add_unbanked(a)
+																var a := int(amountf)
+																if a != 0:
+																																add_unbanked(a)
 
 func add_bm(delta_bm: float) -> void:
-								bm = max(1.0, bm + delta_bm)
-								emit_signal("bm_changed", bm)
+																bm = max(1.0, bm + delta_bm)
+																emit_signal("bm_changed", bm)
 
 func bank_unbanked_full_extract() -> void:
-								if unbanked <= 0:
+																if unbanked <= 0:
+																																end_run(true)
+																																return
+																banked += unbanked
+																Save.add_bank(unbanked)
+																unbanked = 0
+																emit_signal("coins_changed", unbanked)
+																emit_signal("banked_changed", banked)
 																end_run(true)
-																return
-								banked += unbanked
-								Save.add_bank(unbanked)
-								unbanked = 0
-								emit_signal("coins_changed", unbanked)
-								emit_signal("banked_changed", banked)
-								end_run(true)
 
 func bank_at_shrine() -> void:
-								if unbanked <= 0:
-																return
-								var amt := int(round(unbanked * (1.0 - shrine_tax)))
-								banked += amt
-								Save.add_bank(amt)
-								unbanked = 0
-								emit_signal("coins_changed", unbanked)
-								emit_signal("banked_changed", banked)
-								# Reset BM only on bank/extract
-								bm = 1.0
-								emit_signal("bm_changed", bm)
+																if unbanked <= 0:
+																																return
+																var amt := int(round(unbanked * (1.0 - shrine_tax)))
+																banked += amt
+																Save.add_bank(amt)
+																unbanked = 0
+																emit_signal("coins_changed", unbanked)
+																emit_signal("banked_changed", banked)
+																# Reset BM only on bank/extract
+																bm = 1.0
+																emit_signal("bm_changed", bm)
 
 # Temptations
 func apply_temptation(id: String) -> void:
-								match id:
-																"blood_for_batter":
-																								emit_signal("request_player_hp_delta", -0.25) # Player interprets as % current HP
-																								add_bm(0.6)
-																"bring_the_heat":
-																								get_tree().call_group("pattern_controller", "trigger_elite_burst")
-																"squeeze_the_circle":
-																								coin_rate_bonus += (base_coin_rate + coin_rate_bonus) * 0.2
-																								get_tree().call_group("azrena", "shrink_arena", 0.10)
-																_:
-																								pass
+																match id:
+																																"blood_for_batter":
+																																																emit_signal("request_player_hp_delta", -0.25) # Player interprets as % current HP
+																																																add_bm(0.6)
+																																"bring_the_heat":
+																																																get_tree().call_group("pattern_controller", "trigger_elite_burst")
+																																"squeeze_the_circle":
+																																																coin_rate_bonus += (base_coin_rate + coin_rate_bonus) * 0.2
+																																																get_tree().call_group("azrena", "shrink_arena", 0.10)
+																																_:
+																																																pass
 
 # Market system methods
 func force_shrine_spawn(delay: float = 0.0) -> void:
-								if not running:
-																return
-								
-								if delay > 0.0:
-																await get_tree().create_timer(delay).timeout
-								
-								# Force shrine spawn by resetting timer
-								t_since_shrine = shrine_interval
-								emit_signal("spawn_shrine")
+																if not running:
+																																return
+																
+																if delay > 0.0:
+																																await get_tree().create_timer(delay).timeout
+																
+																# Force shrine spawn by resetting timer
+																t_since_shrine = shrine_interval
+																emit_signal("spawn_shrine")
 
 func _apply_passive_items() -> void:
-								# Apply passive item effects at run start
-								var run_inv = get_tree().get_first_node_in_group("RunInventory") as RunInventory
-								var player = get_tree().get_first_node_in_group("player") as Node2D
-								
-								if not run_inv or not player:
-																return
-								
-								for item_id in run_inv.equipped:
-																var item_def = DB.get_item(item_id)
-																if item_def and item_def.kind == ItemDef.Kind.PASSIVE:
-																								var effect_scene = item_def.effect_scene
-																								if effect_scene:
-																																var effect = effect_scene.instantiate()
-																																effect.item_id = item_id
-																																add_child(effect)
-																																effect.apply_on_pickup(player, self)
+																# Apply passive item effects at run start
+																var run_inv = get_tree().get_first_node_in_group("RunInventory") as RunInventory
+																var player = get_tree().get_first_node_in_group("player") as Node2D
+																
+																if not run_inv or not player:
+																																return
+																
+																for item_id in run_inv.equipped:
+																																var item_def = DB.get_item(item_id)
+																																if item_def and item_def.kind == ItemDef.Kind.PASSIVE:
+																																																var effect_scene = item_def.effect_scene
+																																																if effect_scene:
+																																																																var effect = effect_scene.instantiate()
+																																																																effect.item_id = item_id
+																																																																add_child(effect)
+																																																																effect.apply_on_pickup(player, self)
 
 func on_player_death() -> void:
-								# Handle player death - trigger death cleanup
-								emit_signal("player_died")
-								Save.do_death_cleanup()
+		# Handle player death - trigger death cleanup
+		emit_signal("player_died")
+		Save.do_death_cleanup()
+
+# Modifier methods for tool effects
+func apply_pattern_speed_modifier(modifier: float) -> void:
+		pattern_speed_modifiers.append(modifier)
+
+func remove_pattern_speed_modifier(modifier: float) -> void:
+		var index = pattern_speed_modifiers.find(modifier)
+		if index != -1:
+				pattern_speed_modifiers.remove_at(index)
+
+func apply_tips_multiplier(multiplier: float) -> void:
+		tips_multipliers.append(multiplier)
+
+func remove_tips_multiplier(multiplier: float) -> void:
+		var index = tips_multipliers.find(multiplier)
+		if index != -1:
+				tips_multipliers.remove_at(index)
+
+func apply_total_multiplier(multiplier: float) -> void:
+		total_multipliers.append(multiplier)
+
+func remove_total_multiplier(multiplier: float) -> void:
+		var index = total_multipliers.find(multiplier)
+		if index != -1:
+				total_multipliers.remove_at(index)
+
+func get_effective_pattern_speed() -> float:
+		var effective_speed = 1.0
+		for modifier in pattern_speed_modifiers:
+				effective_speed *= modifier
+		return effective_speed
+
+func get_effective_tips_multiplier() -> float:
+		var effective_multiplier = 1.0
+		for multiplier in tips_multipliers:
+				effective_multiplier *= multiplier
+		return effective_multiplier
+
+func get_effective_total_multiplier() -> float:
+		var effective_multiplier = 1.0
+		for multiplier in total_multipliers:
+				effective_multiplier *= multiplier
+		return effective_multiplier

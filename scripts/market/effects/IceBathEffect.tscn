@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://dehk67xhnoux1"]
+
+[ext_resource type="Script" uid="uid://ber7syyu6lwqx" path="res://scripts/market/effects/IceBathEffect.gd" id="1_rmo24"]
+
+[node name="IceBathEffect" type="Node"]
+script = ExtResource("1_rmo24")

@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://bwyqg1gt4omg5"]
+
+[ext_resource type="Script" uid="uid://d26nrdpx5fwru" path="res://scripts/market/effects/TipJarEffect.gd" id="1_mf7h7"]
+
+[node name="TipJarEffect" type="Node"]
+script = ExtResource("1_mf7h7")

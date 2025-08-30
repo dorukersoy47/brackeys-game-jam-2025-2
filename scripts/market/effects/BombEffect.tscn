@@ -1,6 +1,0 @@
-[gd_scene load_steps=2 format=3 uid="uid://da40meaiiu770"]
-
-[ext_resource type="Script" uid="uid://hlob5mc8o2ec" path="res://scripts/market/effects/BombEffect.gd" id="1_lrfl1"]
-
-[node name="BombEffect" type="Node"]
-script = ExtResource("1_lrfl1")

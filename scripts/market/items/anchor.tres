@@ -1,16 +1,17 @@
 [gd_resource type="Resource" script_class="ItemDef" load_steps=3 format=3 uid="uid://dv54ylob4jrfl"]
 
 [ext_resource type="Script" uid="uid://bv81fv5mgdnv5" path="res://scripts/market/ItemDef.gd" id="1_d8g7n"]
-[ext_resource type="PackedScene" uid="uid://b1wavueurev0d" path="res://scripts/market/effects/AnchorEffect.tscn" id="1_iehec"]
+[ext_resource type="PackedScene" uid="uid://b1wavueurev0d" path="res://scripts/market/effects/ProofingWeightEffect.tscn" id="1_iehec"]
 
 [resource]
 script = ExtResource("1_d8g7n")
-id = &"anchor"
-display_name = "Anchor"
-desc = "Freeze furnace movement and attacks for 2 seconds (mobile phase only)"
+id = &"proofing_weight"
+display_name = "Proofing Weight"
+desc = "Freeze moving hazards 2s; roots player 0.3s on cast"
 cost = 130
 kind = 0
 stackable = true
 max_stack = 3
 rarity = &"uncommon"
 effect_scene = ExtResource("1_iehec")
+one_time_use = true

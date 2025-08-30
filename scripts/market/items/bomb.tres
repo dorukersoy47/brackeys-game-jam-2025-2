@@ -1,16 +1,17 @@
 [gd_resource type="Resource" script_class="ItemDef" load_steps=3 format=3 uid="uid://dk3trahq4r257"]
 
 [ext_resource type="Script" uid="uid://bv81fv5mgdnv5" path="res://scripts/market/ItemDef.gd" id="1_1ukmh"]
-[ext_resource type="PackedScene" uid="uid://da40meaiiu770" path="res://scripts/market/effects/BombEffect.tscn" id="1_xfmw5"]
+[ext_resource type="PackedScene" uid="uid://da40meaiiu770" path="res://scripts/market/effects/FlourBurstEffect.tscn" id="1_xfmw5"]
 
 [resource]
 script = ExtResource("1_1ukmh")
-id = &"bomb"
-display_name = "Bomb"
-desc = "Clear all bullets on screen"
+id = &"flour_burst"
+display_name = "Flour Burst"
+desc = "Clear all bullets on screen + 2s dust cloud (reduces visibility by ~20% alpha overlay)"
 cost = 80
 kind = 0
 stackable = true
 max_stack = 3
 rarity = &"common"
 effect_scene = ExtResource("1_xfmw5")
+one_time_use = true
